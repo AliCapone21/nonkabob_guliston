@@ -6,8 +6,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { 
   MapPin, Phone, Loader2, User as UserIcon, 
-  ChevronRight, Building2, FileText, ShieldCheck, Globe, 
-  ArrowLeft, LogIn, PhoneCall 
+  ChevronRight, Building2, FileText, Globe, 
+  ArrowLeft, LogIn, PhoneCall, AlertTriangle 
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -17,74 +17,69 @@ export default function ProfilePage() {
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [user, setUser] = useState<any>(null);
   const [view, setView] = useState<'guest' | 'form'>('guest');
+  const [isTelegram, setIsTelegram] = useState(false); // Track if we are really in Telegram
 
   useEffect(() => {
     const initProfile = async () => {
-      // 1. Load Telegram User
       let telegramUser = null;
+      let inTelegram = false;
+
       if (typeof window !== 'undefined') {
+        // 1. Check if we are on Localhost (Computer)
+        const isLocalhost = window.location.hostname === "localhost" || window.location.hostname.includes("127.0.0.1");
+
         try {
           const WebApp = (await import('@twa-dev/sdk')).default;
-          WebApp.ready(); // Let Telegram know app is ready
+          WebApp.ready();
           
           if (WebApp.initDataUnsafe.user) {
             telegramUser = WebApp.initDataUnsafe.user;
+            inTelegram = true;
           }
         } catch (e) {
-          console.log("Running outside Telegram");
+          console.log("Not in Telegram");
+        }
+
+        // 2. Only use Fake User if we are on Localhost AND no real user found
+        if (!telegramUser && isLocalhost) {
+          console.log("Using Test User (Localhost only)");
+          telegramUser = { id: 123456, first_name: "Test User (Localhost)" };
+          inTelegram = true; // Pretend we are in Telegram for testing
         }
       }
 
-      // Fallback for testing on PC
-      if (!telegramUser) telegramUser = { id: 123456, first_name: "Test User" };
+      setIsTelegram(inTelegram);
 
-      setUser(telegramUser);
-      checkUserExists(telegramUser.id);
+      if (telegramUser) {
+        setUser(telegramUser);
+        checkUserExists(telegramUser.id);
+      }
     };
 
     initProfile();
   }, []);
 
-  // 2. Check if user already logged in before
   async function checkUserExists(telegramId: number) {
     const { data } = await supabase.from('users').select('*').eq('telegram_id', telegramId).single();
-    
     if (data && data.phone_number) {
-      // USER EXISTS! Load data and show form (or we could show a "Profile Summary" instead)
       setPhone(data.phone_number);
       setAddress(data.address_text || "");
       setView('form'); 
-    } else {
-      // NEW USER: Stay on Guest view
-      setView('guest');
     }
   }
 
-  // 3. Auto-Ask for Location when entering the Form
-  useEffect(() => {
-    if (view === 'form' && !address) {
-       handleGetLocation(); // <--- Trigger immediately when form opens!
-    }
-  }, [view]);
-
+  // ... (handleGetLocation and handleSave are same as before)
   function handleGetLocation() {
     if ("geolocation" in navigator) {
-      // Show loading text...
       setAddress("Lokatsiya aniqlanmoqda...");
-      
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          // Format: 41.1234, 69.1234
+          setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
           setAddress(`GPS: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`);
         }, 
         (error) => {
           console.error(error);
-          setAddress(""); // Clear if failed
-          // Optional: alert("Lokatsiya uchun ruxsat kerak");
+          setAddress(""); 
         }
       );
     } else {
@@ -95,7 +90,6 @@ export default function ProfilePage() {
   async function handleSave() {
     if (!user) return;
     setLoading(true);
-
     const updates = {
       telegram_id: user.id,
       full_name: user.first_name + (user.last_name ? " " + user.last_name : ""),
@@ -104,22 +98,32 @@ export default function ProfilePage() {
       latitude: location?.lat,
       longitude: location?.lng,
     };
-
     const { error } = await supabase.from('users').upsert(updates);
     setLoading(false);
-
-    if (error) {
-      alert("Xatolik yuz berdi!");
-      console.error(error);
-    } else {
-      alert("Muvaffaqiyatli saqlandi! Endi buyurtma berishingiz mumkin.");
-    }
+    if (error) alert("Xatolik!");
+    else alert("Muvaffaqiyatli saqlandi!");
   }
 
-  // --- VIEW 1: GUEST MENU (First time users) ---
+  // --- SAFETY CHECK: IF NOT IN TELEGRAM ---
+  if (!isTelegram) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-orange-100 p-4 rounded-full mb-4">
+            <AlertTriangle className="text-orange-500" size={40} />
+        </div>
+        <h1 className="font-bold text-xl mb-2">Iltimos, Telegramdan kiring</h1>
+        <p className="text-gray-500 text-sm">
+            Ushbu ilova faqat Telegram ichida ishlaydi.
+        </p>
+      </main>
+    );
+  }
+
+  // --- VIEW 1: GUEST MENU ---
   if (view === 'guest') {
     return (
       <main className="min-h-screen bg-gray-50 pb-20 p-4">
+        {/* ... SAME GUEST CODE AS BEFORE ... */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-4 text-center">
             <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <LogIn className="text-orange-500" size={32} />
@@ -139,19 +143,17 @@ export default function ProfilePage() {
                 Biz bilan bog'laning
             </button>
         </div>
-
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <MenuItem icon={Building2} label="Filiallarimiz" />
             <MenuItem icon={FileText} label="Kompaniya haqida" />
             <MenuItem icon={Globe} label="Ilova tili" isLast />
         </div>
-
         <BottomNav />
       </main>
     );
   }
 
-  // --- VIEW 2: LOGIN / EDIT FORM ---
+  // --- VIEW 2: FORM ---
   return (
     <main className="min-h-screen bg-gray-50 pb-20 p-4">
       <div className="flex items-center mb-6">
@@ -166,11 +168,11 @@ export default function ProfilePage() {
              <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-3 flex items-center justify-center">
                 <UserIcon size={40} className="text-gray-400" />
             </div>
+            {/* Show Real User Info */}
             <h2 className="font-bold text-gray-800">{user?.first_name}</h2>
             <p className="text-gray-500 text-sm">ID: {user?.id}</p>
         </div>
         
-        {/* Phone Input */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Telefon raqam</label>
             <div className="flex items-center border rounded-lg px-3 py-3 bg-gray-50 focus-within:ring-2 ring-orange-200 transition-all">
@@ -185,7 +187,6 @@ export default function ProfilePage() {
             </div>
         </div>
 
-        {/* Location Input */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Manzil</label>
             <div className="flex gap-2">
