@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { 
   MapPin, Phone, Loader2, User as UserIcon, 
-  ArrowLeft, Send, LogIn // <--- ADDED LogIn HERE
+  ArrowLeft, Send, LogIn, CheckCircle2
 } from "lucide-react";
 
 declare global {
@@ -18,6 +18,7 @@ declare global {
 export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(""); 
+  // Default to +998 and prevent changing it easily
   const [phone, setPhone] = useState("+998");
   const [address, setAddress] = useState("");
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -39,6 +40,7 @@ export default function ProfilePage() {
           if (!name) setName(telegramUser.first_name + (telegramUser.last_name ? " " + telegramUser.last_name : ""));
           checkUserExists(telegramUser.id);
         } else {
+            // Localhost Fallback
             if (window.location.hostname === "localhost") {
                 const fakeUser = { id: 123456, first_name: "Test User" };
                 setUser(fakeUser);
@@ -56,7 +58,7 @@ export default function ProfilePage() {
     const { data } = await supabase.from('users').select('*').eq('telegram_id', telegramId).single();
 
     if (data) {
-      if (data.phone_number && data.phone_number.length > 5) {
+      if (data.phone_number && data.phone_number.length > 9) {
         setName(data.full_name || name);
         setPhone(data.phone_number);
         setAddress(data.address_text || "");
@@ -65,12 +67,13 @@ export default function ProfilePage() {
       } else {
         setView('form');
         setNeedsPhone(true);
+        // Try auto-asking for phone (Native Popup)
         setTimeout(requestContact, 500); 
       }
     } else {
       setView('form');
       setNeedsPhone(true);
-      setTimeout(requestContact, 500);
+      setTimeout(requestContact, 500); 
     }
   }
 
@@ -80,15 +83,53 @@ export default function ProfilePage() {
             if (success) {
                 const sharedPhone = event?.response?.contact?.phone_number;
                 if (sharedPhone) {
-                    const formatted = sharedPhone.startsWith('+') ? sharedPhone : `+${sharedPhone}`;
-                    setPhone(formatted);
+                    // Clean the number (remove + if exists to standardize)
+                    let cleanPhone = sharedPhone.replace('+', '');
+                    
+                    // 1. STRICTLY UZBEKISTAN CHECK
+                    if (!cleanPhone.startsWith('998')) {
+                        alert("Kechirasiz, faqat O'zbekiston raqamlari (+998) qabul qilinadi.");
+                        return;
+                    }
+
+                    // Format back to +998...
+                    const finalPhone = `+${cleanPhone}`;
+                    setPhone(finalPhone);
                     setNeedsPhone(false);
-                    setTimeout(handleGetLocation, 500);
+                    
+                    // 2. AUTO SAVE IMMEDIATELY
+                    saveProfileDirectly(finalPhone);
                 }
             }
         });
     }
   };
+
+  // Helper to save profile immediately without clicking a button
+  async function saveProfileDirectly(phoneValue: string) {
+    if (!user) return;
+    setLoading(true);
+
+    const updates = {
+      telegram_id: user.id,
+      full_name: name,
+      phone_number: phoneValue,
+      address_text: address, // Might be empty initially, that's okay
+      latitude: location?.lat,
+      longitude: location?.lng,
+    };
+
+    const { error } = await supabase.from('users').upsert(updates);
+    setLoading(false);
+
+    if (error) {
+        alert("Xatolik: " + error.message);
+    } else {
+        // Success! Ask for location next
+        alert("Raqam saqlandi! Endi manzilingizni aniqlaymiz.");
+        handleGetLocation();
+    }
+  }
 
   function handleGetLocation() {
     if ("geolocation" in navigator) {
@@ -103,9 +144,14 @@ export default function ProfilePage() {
     }
   }
 
+  // Manual Save (for the button)
   async function handleSave() {
     if (!user) return;
-    if (phone.length < 9) { alert("Telefon raqam noto'g'ri!"); return; }
+    // Basic validation for manual entry
+    if (!phone.startsWith("+998") || phone.length < 13) { 
+        alert("Iltimos, to'g'ri O'zbekiston raqamini kiriting (+998...)"); 
+        return; 
+    }
     
     setLoading(true);
 
@@ -127,6 +173,19 @@ export default function ProfilePage() {
       setNeedsPhone(false);
     }
   }
+
+  // Handle Manual Input to enforce +998
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    // If they try to delete +998, stop them
+    if (!val.startsWith("+998")) {
+        val = "+998";
+    }
+    // Limit length (max 13 chars: +998 90 123 45 67)
+    if (val.length > 13) return;
+    
+    setPhone(val);
+  };
 
   if (view === 'guest') {
     return (
@@ -180,7 +239,13 @@ export default function ProfilePage() {
             <label className="block text-sm text-gray-500 mb-1">Telefon raqam</label>
             <div className="flex items-center border rounded-lg px-3 py-3 bg-gray-50">
                 <Phone size={18} className="text-gray-400 mr-2" />
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-transparent w-full outline-none text-lg font-medium" />
+                <input 
+                    type="tel" 
+                    value={phone} 
+                    onChange={handlePhoneChange} // <--- LOCKED TO +998
+                    className="bg-transparent w-full outline-none text-lg font-medium" 
+                />
+                {!needsPhone && <CheckCircle2 size={20} className="text-green-500 ml-2" />}
             </div>
         </div>
 
