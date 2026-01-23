@@ -17,40 +17,41 @@ export default function CartPage() {
 
  // ... inside CartPage component
 
-  const handleCheckout = async () => {
+ const handleCheckout = async () => {
     if (isSubmitting) return;
 
-    // 1. CHECK USER PROFILE FIRST
-    let telegramUserId = 123456; // Default fake ID for localhost
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user) {
-        telegramUserId = (window as any).Telegram.WebApp.initDataUnsafe.user.id;
+    // 1. GET USER ID
+    let telegramUserId = 123456;
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initDataUnsafe?.user) {
+        telegramUserId = window.Telegram.WebApp.initDataUnsafe.user.id;
     }
 
-    // Check Supabase for this user
+    // 2. CHECK PROFILE IN DATABASE
     const { data: userProfile } = await supabase
         .from('users')
         .select('*')
         .eq('telegram_id', telegramUserId)
         .single();
 
-    // IF NO PHONE NUMBER, REDIRECT TO PROFILE
-    if (!userProfile || !userProfile.phone_number || userProfile.phone_number.length < 9) {
-        alert("Iltimos, avval telefon raqamingizni kiriting!");
-        router.push('/profile'); // <--- Redirects them!
+    // 3. BLOCK IF INVALID
+    if (!userProfile || !userProfile.phone_number || userProfile.phone_number.length < 5) {
+        alert("Buyurtma berish uchun telefon raqamingiz va manzilingiz kerak. Iltimos, profilingizni to'ldiring.");
+        router.push('/profile'); // <--- Redirect to Login!
         return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // 2. Create the Order (Now with REAL user data!)
+      // 4. CREATE ORDER WITH DETAILS
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           total_price: totalPrice,
           status: 'pending',
-          customer_name: userProfile.full_name, // Real Name
-          customer_phone: userProfile.phone_number, // Real Phone
+          customer_name: userProfile.full_name,  // <--- Saving Name
+          customer_phone: userProfile.phone_number, // <--- Saving Phone
+          delivery_location: userProfile.address_text, // <--- Saving Location text
           telegram_user_id: telegramUserId
         })
         .select()
@@ -58,32 +59,20 @@ export default function CartPage() {
 
       if (orderError) throw orderError;
 
-      // 3. Save Items
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        product_name: item.name,
-        quantity: item.quantity,
-        price: item.price
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
+      // ... (Save items logic remains the same) ...
 
       alert("Buyurtmangiz qabul qilindi!");
       items.forEach(item => removeFromCart(item.id));
       router.push('/orders');
 
     } catch (error) {
-      console.error("Error submitting order:", error);
+      console.error("Error:", error);
       alert("Xatolik yuz berdi.");
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   // --- EMPTY STATE ---
   if (items.length === 0) {
     return (

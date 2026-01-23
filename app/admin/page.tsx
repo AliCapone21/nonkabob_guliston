@@ -3,14 +3,17 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Clock, CheckCircle2, ChefHat, XCircle, RefreshCw } from "lucide-react";
+import { RefreshCw, MapPin, Phone } from "lucide-react";
 
+// Updated Type Definition including Phone and Location
 type Order = {
   id: number;
   created_at: string;
   status: string;
   total_price: number;
   customer_name: string;
+  customer_phone: string;     // <--- NEW
+  delivery_location: string;  // <--- NEW
   order_items: {
     product_name: string;
     quantity: number;
@@ -20,7 +23,6 @@ type Order = {
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [pin, setPin] = useState("");
-  const [orders, setOrders] = useState<Order[]>([]);
   
   // --- LOGIN SCREEN ---
   if (!authorized) {
@@ -83,7 +85,6 @@ function AdminDashboard() {
 
   async function updateStatus(orderId: number, newStatus: string) {
     await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
-    // No need to manually fetchOrders() because the Real-time listener will trigger it!
   }
 
   return (
@@ -101,9 +102,31 @@ function AdminDashboard() {
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
                 <div>
-                    <h3 className="font-bold text-lg">#{order.id} - {order.customer_name}</h3>
-                    <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleString('uz-UZ')}</p>
+                    <h3 className="font-bold text-lg">#{order.id} - {order.customer_name || "Mijoz"}</h3>
+                    
+                    {/* NEW: Customer Details Section */}
+                    <div className="mt-2 space-y-1">
+                        <a href={`tel:${order.customer_phone}`} className="flex items-center text-blue-600 font-medium text-sm">
+                            <Phone size={14} className="mr-1" />
+                            {order.customer_phone || "Raqam yo'q"}
+                        </a>
+                        
+                        {order.delivery_location && (
+                            <a 
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_location.replace("GPS: ", ""))}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center text-gray-600 text-sm hover:underline"
+                            >
+                                <MapPin size={14} className="mr-1" />
+                                {order.delivery_location}
+                            </a>
+                        )}
+                    </div>
+
+                    <p className="text-xs text-gray-400 mt-2">{new Date(order.created_at).toLocaleString('uz-UZ')}</p>
                 </div>
+                
                 <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize 
                     ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : ''}
                     ${order.status === 'cooking' ? 'bg-blue-100 text-blue-700' : ''}
