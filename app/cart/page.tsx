@@ -17,41 +17,58 @@ export default function CartPage() {
 
  // ... inside CartPage component
 
- const handleCheckout = async () => {
+// Inside app/cart/page.tsx
+
+  const handleCheckout = async () => {
     if (isSubmitting) return;
 
-    // 1. GET USER ID
-    let telegramUserId = 123456;
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initDataUnsafe?.user) {
-        telegramUserId = window.Telegram.WebApp.initDataUnsafe.user.id;
+    // 1. STRICT ID CHECK
+    let telegramUserId = null; 
+
+    if (typeof window !== 'undefined') {
+        // Check for REAL Telegram User
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+            telegramUserId = window.Telegram.WebApp.initDataUnsafe.user.id;
+        } 
+        // ONLY allow Test User if we are on Localhost (Computer)
+        else if (window.location.hostname === "localhost") {
+            telegramUserId = 123456;
+        }
     }
 
-    // 2. CHECK PROFILE IN DATABASE
+    // 2. IF NO ID FOUND -> STOP HERE!
+    if (!telegramUserId) {
+        alert("Siz tizimga kirmagansiz. Iltimos, avval profilingizni to'ldiring.");
+        router.push('/profile'); 
+        return;
+    }
+
+    // 3. CHECK DATABASE FOR THIS SPECIFIC ID
     const { data: userProfile } = await supabase
         .from('users')
         .select('*')
         .eq('telegram_id', telegramUserId)
         .single();
 
-    // 3. BLOCK IF INVALID
+    // 4. BLOCK IF PROFILE IS INVALID
     if (!userProfile || !userProfile.phone_number || userProfile.phone_number.length < 5) {
-        alert("Buyurtma berish uchun telefon raqamingiz va manzilingiz kerak. Iltimos, profilingizni to'ldiring.");
-        router.push('/profile'); // <--- Redirect to Login!
+        alert("Buyurtma berish uchun telefon raqamingiz kerak. Iltimos, ma'lumotlarni to'ldiring.");
+        router.push('/profile');
         return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // 4. CREATE ORDER WITH DETAILS
+      // 5. CREATE ORDER (Now guaranteed to be the correct user)
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           total_price: totalPrice,
           status: 'pending',
-          customer_name: userProfile.full_name,  // <--- Saving Name
-          customer_phone: userProfile.phone_number, // <--- Saving Phone
-          delivery_location: userProfile.address_text, // <--- Saving Location text
+          customer_name: userProfile.full_name,
+          customer_phone: userProfile.phone_number,
+          delivery_location: userProfile.address_text,
           telegram_user_id: telegramUserId
         })
         .select()
@@ -59,7 +76,16 @@ export default function CartPage() {
 
       if (orderError) throw orderError;
 
-      // ... (Save items logic remains the same) ...
+      // Save Items
+      const orderItems = items.map((item) => ({
+        order_id: order.id,
+        product_name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      }));
+
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+      if (itemsError) throw itemsError;
 
       alert("Buyurtmangiz qabul qilindi!");
       items.forEach(item => removeFromCart(item.id));

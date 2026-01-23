@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { CartProvider } from "@/context/CartContext"; // <--- Import this
+import { CartProvider } from "@/context/CartContext";
+import Script from "next/script"; // <--- 1. Import this
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,12 +26,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* 2. Add this Script tag so Telegram works on your phone */}
+        <Script 
+          src="https://telegram.org/js/telegram-web-app.js" 
+          strategy="beforeInteractive" 
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <CartProvider> {/* <--- Start Wrapper */}
+        <CartProvider>
           {children}
-        </CartProvider> {/* <--- End Wrapper */}
+        </CartProvider>
       </body>
     </html>
   );
