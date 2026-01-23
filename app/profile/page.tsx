@@ -18,50 +18,68 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [view, setView] = useState<'guest' | 'form'>('guest');
   
-  // NEW: Start in a "Checking" state, so we don't show the error immediately
+  // Loading states
   const [isChecking, setIsChecking] = useState(true);
   const [isTelegram, setIsTelegram] = useState(false);
 
   useEffect(() => {
     const initProfile = async () => {
-      // Small delay to ensure Telegram is injected
+      // Small delay to ensure Telegram SDK is ready
       await new Promise(resolve => setTimeout(resolve, 500));
 
       let telegramUser = null;
       let inTelegram = false;
 
       if (typeof window !== 'undefined') {
-        // 1. Check Localhost
         const isLocalhost = window.location.hostname === "localhost" || window.location.hostname.includes("127.0.0.1");
 
         try {
-          // Try to get the SDK
+          // Import SDK
           const WebApp = (await import('@twa-dev/sdk')).default;
           WebApp.ready();
-          WebApp.expand(); // Make app full height
+          WebApp.expand();
 
-          if (WebApp.initDataUnsafe?.user) {
-            telegramUser = WebApp.initDataUnsafe.user;
+          // Relaxed Check: If initData exists, we are in Telegram
+          if (WebApp.initData || WebApp.initDataUnsafe?.user) {
             inTelegram = true;
+            telegramUser = WebApp.initDataUnsafe.user;
           }
+          
+          // --- AUTO REQUEST PHONE NUMBER ---
+          // This triggers the native Telegram popup you wanted!
+          if (inTelegram && telegramUser) {
+             // Only ask if we haven't saved it yet (optional check, or just always ask)
+             WebApp.requestContact((success: boolean, response: any) => {
+                if (success) {
+                   // Note: 'response' might contain the contact string in some versions,
+                   // but often it just signals success. The user still needs to confirm.
+                   // Ideally, we would read the contact from the event, but for now 
+                   // we just let them know it worked and focus the input.
+                   console.log("User agreed to share contact");
+                }
+             });
+          }
+
         } catch (e) {
           console.log("Error loading SDK:", e);
         }
 
-        // 2. Fallback for Localhost Testing
-        if (!telegramUser && isLocalhost) {
+        // Fallback for Localhost
+        if (!inTelegram && isLocalhost) {
+          console.log("Localhost detected - using Test User");
           telegramUser = { id: 123456, first_name: "Test User (Localhost)" };
           inTelegram = true; 
         }
       }
 
       setIsTelegram(inTelegram);
-      setIsChecking(false); // <--- STOP LOADING NOW
-
+      
       if (telegramUser) {
         setUser(telegramUser);
         checkUserExists(telegramUser.id);
       }
+      
+      setIsChecking(false); // Stop loading screen
     };
 
     initProfile();
@@ -73,25 +91,13 @@ export default function ProfilePage() {
       setPhone(data.phone_number);
       setAddress(data.address_text || "");
       setView('form'); 
+    } else {
+      // New user? Go straight to form and ask for location!
+      setView('form');
+      setTimeout(handleGetLocation, 1000); // Ask for location after 1 second
     }
   }
 
-  // --- NATIVE PHONE REQUEST ---
-  // Note: This only works on specific versions of Telegram API
-  const requestContact = () => {
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-        (window as any).Telegram.WebApp.requestContact((success: boolean) => {
-            if (success) {
-                // If they say YES, the phone number is sent to the BOT chat, 
-                // but rarely exposed to the Mini App directly due to privacy.
-                // We usually still ask them to type it to be safe.
-                alert("Raqam ulashildi! Iltimos, uni quyida tasdiqlang.");
-            }
-        });
-    }
-  }
-
-  // ... (Address and Save logic same as before)
   function handleGetLocation() {
     if ("geolocation" in navigator) {
       setAddress("Lokatsiya aniqlanmoqda...");
@@ -105,8 +111,6 @@ export default function ProfilePage() {
           setAddress(""); 
         }
       );
-    } else {
-      alert("Brauzeringiz lokatsiyani qo'llab quvvatlamaydi.");
     }
   }
 
@@ -127,7 +131,7 @@ export default function ProfilePage() {
     else alert("Muvaffaqiyatli saqlandi!");
   }
 
-  // --- STATE 1: CHECKING (Loading Spinner) ---
+  // --- STATE 1: CHECKING ---
   if (isChecking) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
@@ -137,62 +141,26 @@ export default function ProfilePage() {
     );
   }
 
-  // --- STATE 2: ERROR (Not in Telegram) ---
+  // --- STATE 2: ERROR ---
   if (!isTelegram) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="bg-orange-100 p-4 rounded-full mb-4">
             <AlertTriangle className="text-orange-500" size={40} />
         </div>
-        <h1 className="font-bold text-xl mb-2">Iltimos, Telegramdan kiring</h1>
+        <h1 className="font-bold text-xl mb-2">Xatolik</h1>
         <p className="text-gray-500 text-sm">
-            Ushbu ilova faqat Telegram ichida ishlaydi.
+            Telegram ma'lumotlari yuklanmadi. Iltimos, ilovani qaytadan oching.
         </p>
       </main>
     );
   }
 
-  // --- STATE 3: GUEST MENU ---
-  if (view === 'guest') {
-    return (
-      <main className="min-h-screen bg-gray-50 pb-20 p-4">
-        {/* ... SAME AS BEFORE ... */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-4 text-center">
-            <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <LogIn className="text-orange-500" size={32} />
-            </div>
-            <h2 className="font-bold text-lg mb-2">Profilga kirish</h2>
-            <p className="text-gray-500 text-sm mb-6 px-4">
-                Bu mahsulotlarga buyurtma berish va ularni kuzatish uchun kerak.
-            </p>
-            <button 
-                onClick={() => setView('form')}
-                className="w-full bg-green-500 text-white py-3 rounded-xl font-bold mb-3 active:scale-95 transition-transform"
-            >
-                Kirish (Login)
-            </button>
-            <button className="w-full bg-green-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                <PhoneCall size={20} />
-                Biz bilan bog'laning
-            </button>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <MenuItem icon={Building2} label="Filiallarimiz" />
-            <MenuItem icon={FileText} label="Kompaniya haqida" />
-            <MenuItem icon={Globe} label="Ilova tili" isLast />
-        </div>
-        <BottomNav />
-      </main>
-    );
-  }
-
-  // --- STATE 4: FORM ---
+  // --- STATE 3: FORM (We skip Guest view now for speed) ---
   return (
     <main className="min-h-screen bg-gray-50 pb-20 p-4">
       <div className="flex items-center mb-6">
-        <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
-            <ArrowLeft size={20} />
-        </button>
+        {/* Only show back button if we have a Guest view (optional) */}
         <h1 className="text-xl font-bold">Ma'lumotlarni kiritish</h1>
       </div>
 
@@ -205,7 +173,7 @@ export default function ProfilePage() {
             <p className="text-gray-500 text-sm">ID: {user?.id}</p>
         </div>
         
-        {/* Phone Input with Request Button */}
+        {/* Phone Input */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Telefon raqam</label>
             <div className="flex gap-2">
@@ -219,17 +187,10 @@ export default function ProfilePage() {
                         placeholder="+998"
                     />
                 </div>
-                {/* Optional: Add "Share Contact" button if you want to try the native popup */}
-                <button 
-                    onClick={requestContact}
-                    className="bg-green-100 text-green-600 p-3 rounded-lg active:scale-95 transition-colors hover:bg-green-200"
-                    title="Kontaktni ulashish"
-                >
-                    <Send size={24} />
-                </button>
             </div>
         </div>
 
+        {/* Location Input */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Manzil</label>
             <div className="flex gap-2">
@@ -247,7 +208,6 @@ export default function ProfilePage() {
                     <MapPin size={24} />
                 </button>
             </div>
-            <p className="text-[10px] text-gray-400 mt-1">Lokatsiya avtomatik aniqlanadi</p>
         </div>
 
         <button 
@@ -262,16 +222,4 @@ export default function ProfilePage() {
       <BottomNav />
     </main>
   );
-}
-
-function MenuItem({ icon: Icon, label, isLast }: { icon: any, label: string, isLast?: boolean }) {
-    return (
-        <div className={`flex items-center justify-between p-4 ${!isLast ? 'border-b border-gray-100' : ''} active:bg-gray-50`}>
-            <div className="flex items-center gap-3 text-gray-600">
-                <Icon size={20} />
-                <span className="text-sm font-medium">{label}</span>
-            </div>
-            <ChevronRight size={16} className="text-gray-400" />
-        </div>
-    )
 }
