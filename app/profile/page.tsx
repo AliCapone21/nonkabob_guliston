@@ -45,28 +45,12 @@ export default function ProfilePage() {
             telegramUser = WebApp.initDataUnsafe.user;
           }
           
-          // --- AUTO REQUEST PHONE NUMBER ---
-          // This triggers the native Telegram popup you wanted!
-          if (inTelegram && telegramUser) {
-             // Only ask if we haven't saved it yet (optional check, or just always ask)
-             WebApp.requestContact((success: boolean, response: any) => {
-                if (success) {
-                   // Note: 'response' might contain the contact string in some versions,
-                   // but often it just signals success. The user still needs to confirm.
-                   // Ideally, we would read the contact from the event, but for now 
-                   // we just let them know it worked and focus the input.
-                   console.log("User agreed to share contact");
-                }
-             });
-          }
-
         } catch (e) {
           console.log("Error loading SDK:", e);
         }
 
         // Fallback for Localhost
         if (!inTelegram && isLocalhost) {
-          console.log("Localhost detected - using Test User");
           telegramUser = { id: 123456, first_name: "Test User (Localhost)" };
           inTelegram = true; 
         }
@@ -88,15 +72,35 @@ export default function ProfilePage() {
   async function checkUserExists(telegramId: number) {
     const { data } = await supabase.from('users').select('*').eq('telegram_id', telegramId).single();
     if (data && data.phone_number) {
+      // User exists and has phone -> Show data
       setPhone(data.phone_number);
       setAddress(data.address_text || "");
       setView('form'); 
     } else {
-      // New user? Go straight to form and ask for location!
+      // User is new OR has no phone -> Go to form so they can click the button
       setView('form');
-      setTimeout(handleGetLocation, 1000); // Ask for location after 1 second
     }
   }
+
+  // --- THE NATIVE BUTTON TRIGGER ---
+  const handleRequestContact = async () => {
+    if (typeof window !== 'undefined') {
+        const WebApp = (await import('@twa-dev/sdk')).default;
+        
+        // This is the Legal Way: Triggered by a user click function
+        WebApp.requestContact((success: boolean, event: any) => {
+            if (success) {
+                // Some versions of Telegram return the contact object here
+                if(event?.response?.contact?.phone_number) {
+                    setPhone(event.response.contact.phone_number);
+                } else {
+                    // If not, we just assume success and ask them to verify
+                    alert("Raqam yuborildi! Iltimos, saqlash tugmasini bosing.");
+                }
+            }
+        });
+    }
+  };
 
   function handleGetLocation() {
     if ("geolocation" in navigator) {
@@ -150,17 +154,52 @@ export default function ProfilePage() {
         </div>
         <h1 className="font-bold text-xl mb-2">Xatolik</h1>
         <p className="text-gray-500 text-sm">
-            Telegram ma'lumotlari yuklanmadi. Iltimos, ilovani qaytadan oching.
+            Telegram ma'lumotlari yuklanmadi.
         </p>
       </main>
     );
   }
 
-  // --- STATE 3: FORM (We skip Guest view now for speed) ---
+  // --- STATE 3: GUEST MENU ---
+  if (view === 'guest') {
+    return (
+      <main className="min-h-screen bg-gray-50 pb-20 p-4">
+        <div className="bg-white rounded-2xl p-6 shadow-sm mb-4 text-center">
+            <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <LogIn className="text-orange-500" size={32} />
+            </div>
+            <h2 className="font-bold text-lg mb-2">Profilga kirish</h2>
+            <p className="text-gray-500 text-sm mb-6 px-4">
+                Bu mahsulotlarga buyurtma berish va ularni kuzatish uchun kerak.
+            </p>
+            <button 
+                onClick={() => setView('form')}
+                className="w-full bg-green-500 text-white py-3 rounded-xl font-bold mb-3 active:scale-95 transition-transform"
+            >
+                Kirish (Login)
+            </button>
+            <button className="w-full bg-green-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                <PhoneCall size={20} />
+                Biz bilan bog'laning
+            </button>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <MenuItem icon={Building2} label="Filiallarimiz" />
+            <MenuItem icon={FileText} label="Kompaniya haqida" />
+            <MenuItem icon={Globe} label="Ilova tili" isLast />
+        </div>
+        <BottomNav />
+      </main>
+    );
+  }
+
+  // --- STATE 4: FORM ---
   return (
     <main className="min-h-screen bg-gray-50 pb-20 p-4">
       <div className="flex items-center mb-6">
-        {/* Only show back button if we have a Guest view (optional) */}
+        <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
+            <ArrowLeft size={20} />
+        </button>
         <h1 className="text-xl font-bold">Ma'lumotlarni kiritish</h1>
       </div>
 
@@ -173,24 +212,38 @@ export default function ProfilePage() {
             <p className="text-gray-500 text-sm">ID: {user?.id}</p>
         </div>
         
-        {/* Phone Input */}
+        {/* PHONE SECTION */}
         <div>
-            <label className="block text-sm text-gray-500 mb-1">Telefon raqam</label>
-            <div className="flex gap-2">
-                <div className="flex items-center border rounded-lg px-3 py-3 bg-gray-50 focus-within:ring-2 ring-orange-200 transition-all flex-grow">
-                    <Phone size={18} className="text-gray-400 mr-2" />
-                    <input 
-                        type="tel" 
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="bg-transparent w-full outline-none text-lg font-medium"
-                        placeholder="+998"
-                    />
-                </div>
+            <label className="block text-sm text-gray-500 mb-2">Telefon raqam</label>
+            
+            {/* 1. THE BIG SHARE BUTTON (Only shows if phone is empty/short) */}
+            {phone.length < 5 && (
+                <button 
+                    onClick={handleRequestContact}
+                    className="w-full bg-blue-500 text-white py-3 rounded-xl font-bold mb-3 flex items-center justify-center gap-2 shadow-md active:scale-95"
+                >
+                    <Send size={20} />
+                    Raqamni yuborish (Telegram)
+                </button>
+            )}
+
+            {/* 2. MANUAL INPUT */}
+            <div className="flex items-center border rounded-lg px-3 py-3 bg-gray-50 focus-within:ring-2 ring-orange-200 transition-all">
+                <Phone size={18} className="text-gray-400 mr-2" />
+                <input 
+                    type="tel" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="bg-transparent w-full outline-none text-lg font-medium"
+                    placeholder="+998"
+                />
             </div>
+            {phone.length < 5 && (
+                <p className="text-xs text-center text-gray-400 mt-2">yoki qo'lda kiriting</p>
+            )}
         </div>
 
-        {/* Location Input */}
+        {/* LOCATION SECTION */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Manzil</label>
             <div className="flex gap-2">
@@ -208,6 +261,7 @@ export default function ProfilePage() {
                     <MapPin size={24} />
                 </button>
             </div>
+            <p className="text-[10px] text-gray-400 mt-1">Lokatsiya avtomatik aniqlanadi</p>
         </div>
 
         <button 
@@ -222,4 +276,16 @@ export default function ProfilePage() {
       <BottomNav />
     </main>
   );
+}
+
+function MenuItem({ icon: Icon, label, isLast }: { icon: any, label: string, isLast?: boolean }) {
+    return (
+        <div className={`flex items-center justify-between p-4 ${!isLast ? 'border-b border-gray-100' : ''} active:bg-gray-50`}>
+            <div className="flex items-center gap-3 text-gray-600">
+                <Icon size={20} />
+                <span className="text-sm font-medium">{label}</span>
+            </div>
+            <ChevronRight size={16} className="text-gray-400" />
+        </div>
+    )
 }
