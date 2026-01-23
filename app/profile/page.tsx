@@ -75,40 +75,40 @@ export default function ProfilePage() {
     }
   }
 
+  // --- FIXED REQUEST FUNCTION ---
   const requestContact = () => {
     if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.requestContact((success: boolean, event: any) => {
+            // If the user clicked "OK" / "Share"
             if (success) {
-                // 1. Try to find the phone number in multiple possible places
-                // Android/iOS sometimes structure this differently
-                const contactData = event?.response?.contact || event?.contact;
+                // Try to get the number from the response
+                const contactData = event?.response?.contact || event?.contact || event?.responseUnsafe?.contact;
                 
                 if (contactData && contactData.phone_number) {
+                    // SCENARIO A: We got the number (Android / Some iOS)
+                    // This is the "Happy Path" - Auto Fill
                     let rawPhone = contactData.phone_number;
-                    
-                    // 2. CLEAN THE NUMBER (Remove spaces, -, (, ), +)
-                    // This turns "+998 90-123-45-67" into "998901234567"
                     let cleanPhone = rawPhone.replace(/\D/g, ''); 
 
-                    // 3. CHECK FOR UZBEKISTAN CODE
                     if (!cleanPhone.startsWith('998')) {
-                        alert(`Kechirasiz, faqat O'zbekiston raqamlari qabul qilinadi. (Sizning raqamingiz: ${rawPhone})`);
+                        alert("Faqat O'zbekiston raqamlari qabul qilinadi.");
                         return;
                     }
 
-                    // 4. FORMAT AND SAVE
                     const finalPhone = `+${cleanPhone}`;
                     setPhone(finalPhone);
                     setNeedsPhone(false);
+                    saveProfileDirectly(finalPhone); // Auto-Save
                     
-                    // Visual feedback
-                    // alert(`Raqam qabul qilindi: ${finalPhone}`); // Optional debug alert
-
-                    // 5. AUTO SAVE
-                    saveProfileDirectly(finalPhone);
                 } else {
-                    alert("Raqamni olishda xatolik. Iltimos, qo'lda kiriting.");
+                    // SCENARIO B: Success, but number is hidden (iPhone Privacy)
+                    // The number WAS sent to the chat, but JS can't see it.
+                    // Instead of an error, we ask the user to type it.
+                    alert("Raqam chatga yuborildi! Iltimos, uni quyida yozib tasdiqlang.");
+                    setNeedsPhone(false); // Hide the big button so they focus on input
                 }
+            } else {
+                // User clicked Cancel - do nothing
             }
         });
     }
@@ -131,7 +131,6 @@ export default function ProfilePage() {
     setLoading(false);
 
     if (!error) {
-        // Success! Ask for location next
         handleGetLocation();
     }
   }
@@ -152,7 +151,7 @@ export default function ProfilePage() {
   async function handleSave() {
     if (!user) return;
     
-    // Strict Manual Validation
+    // Manual Validation
     const cleanManual = phone.replace(/\D/g, '');
     if (!cleanManual.startsWith("998") || cleanManual.length < 12) { 
         alert("Iltimos, to'g'ri O'zbekiston raqamini kiriting (+998...)"); 
@@ -182,6 +181,7 @@ export default function ProfilePage() {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
+    // Keep the +998 prefix intact
     if (!val.startsWith("+998")) {
         val = "+998";
     }
