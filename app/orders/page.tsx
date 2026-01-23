@@ -4,7 +4,7 @@
 import BottomNav from "@/components/BottomNav";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Clock, CheckCircle2, ChefHat, XCircle, ArrowRight } from "lucide-react";
+import { Clock, CheckCircle2, ChefHat, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 type Order = {
@@ -23,38 +23,47 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchOrders();
-    
-    // Subscribe to real-time updates (so status changes instantly)
-    const channel = supabase
-      .channel('orders_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchOrders(); // Refresh if something changes
-      })
-      .subscribe();
+    // 1. Determine who the user is
+    const fetchUserOrders = async () => {
+      let telegramUserId = 123456; // Default "Guest" ID for computer testing
 
-    return () => {
-      supabase.removeChannel(channel);
+      // Check if running inside Telegram
+      if (typeof window !== 'undefined') {
+        try {
+           // Dynamic import to prevent "window not defined" error
+           const WebApp = (await import('@twa-dev/sdk')).default;
+           if (WebApp.initDataUnsafe.user) {
+             telegramUserId = WebApp.initDataUnsafe.user.id;
+           }
+        } catch (e) {
+           console.log("Not in Telegram, using Guest ID");
+        }
+      }
+
+      // 2. Fetch ONLY this user's orders
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (product_name, quantity)
+        `)
+        .eq('telegram_user_id', telegramUserId) // <--- THE IMPORTANT FIX
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching orders:", error);
+      } else {
+        setOrders(data || []);
+      }
+      setLoading(false);
     };
+
+    fetchUserOrders();
+
+    // (Optional) Real-time listener could be added here, 
+    // but requires careful filtering setup. For now, simple fetch is safer.
+
   }, []);
-
-  async function fetchOrders() {
-    // Fetch orders AND their items
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (product_name, quantity)
-      `)
-      .order('created_at', { ascending: false }); // Newest first
-
-    if (error) {
-      console.error("Error fetching orders:", error);
-    } else {
-      setOrders(data || []);
-    }
-    setLoading(false);
-  }
 
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
@@ -64,7 +73,9 @@ export default function OrdersPage() {
 
       <div className="p-4 space-y-4">
         {loading ? (
-          <p className="text-center text-gray-400 mt-10">Yuklanmoqda...</p>
+          <div className="flex justify-center mt-10">
+             <Loader2 className="animate-spin text-orange-500" />
+          </div>
         ) : orders.length === 0 ? (
           <div className="text-center mt-10">
             <p className="text-gray-500 mb-4">Hozircha buyurtmalar yo'q</p>
@@ -115,7 +126,6 @@ function StatusBadge({ status }: { status: string }) {
     cancelled: { bg: "bg-red-100", text: "text-red-700", icon: XCircle, label: "Bekor qilindi" },
   };
 
-  // Default to pending if status is unknown
   const config = styles[status as keyof typeof styles] || styles.pending;
   const Icon = config.icon;
 

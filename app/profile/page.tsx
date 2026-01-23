@@ -9,7 +9,6 @@ import {
   ChevronRight, Building2, FileText, ShieldCheck, Globe, 
   ArrowLeft, LogIn, PhoneCall 
 } from "lucide-react";
-// DELETED: import WebApp from "@twa-dev/sdk"; <--- THIS WAS CAUSING THE ERROR
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
@@ -20,47 +19,74 @@ export default function ProfilePage() {
   const [view, setView] = useState<'guest' | 'form'>('guest');
 
   useEffect(() => {
-    // Dynamically load the Telegram SDK only on the client
-    const loadTelegram = async () => {
+    const initProfile = async () => {
+      // 1. Load Telegram User
+      let telegramUser = null;
       if (typeof window !== 'undefined') {
-        const WebApp = (await import('@twa-dev/sdk')).default;
-        
-        if (WebApp.initDataUnsafe.user) {
-          setUser(WebApp.initDataUnsafe.user);
-          checkUserExists(WebApp.initDataUnsafe.user.id);
-        } else {
-          // Fake user for testing in browser (outside Telegram)
-          const fakeUser = { id: 123456, first_name: "Test User" };
-          setUser(fakeUser);
-          checkUserExists(fakeUser.id);
+        try {
+          const WebApp = (await import('@twa-dev/sdk')).default;
+          WebApp.ready(); // Let Telegram know app is ready
+          
+          if (WebApp.initDataUnsafe.user) {
+            telegramUser = WebApp.initDataUnsafe.user;
+          }
+        } catch (e) {
+          console.log("Running outside Telegram");
         }
       }
+
+      // Fallback for testing on PC
+      if (!telegramUser) telegramUser = { id: 123456, first_name: "Test User" };
+
+      setUser(telegramUser);
+      checkUserExists(telegramUser.id);
     };
 
-    loadTelegram();
+    initProfile();
   }, []);
 
+  // 2. Check if user already logged in before
   async function checkUserExists(telegramId: number) {
     const { data } = await supabase.from('users').select('*').eq('telegram_id', telegramId).single();
+    
     if (data && data.phone_number) {
+      // USER EXISTS! Load data and show form (or we could show a "Profile Summary" instead)
       setPhone(data.phone_number);
       setAddress(data.address_text || "");
       setView('form'); 
+    } else {
+      // NEW USER: Stay on Guest view
+      setView('guest');
     }
   }
 
+  // 3. Auto-Ask for Location when entering the Form
+  useEffect(() => {
+    if (view === 'form' && !address) {
+       handleGetLocation(); // <--- Trigger immediately when form opens!
+    }
+  }, [view]);
+
   function handleGetLocation() {
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-        setAddress(`GPS: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
-        alert("Lokatsiya aniqlandi!");
-      }, (error) => {
-        alert("Lokatsiyani olishda xatolik. Iltimos ruxsat bering.");
-      });
+      // Show loading text...
+      setAddress("Lokatsiya aniqlanmoqda...");
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          // Format: 41.1234, 69.1234
+          setAddress(`GPS: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`);
+        }, 
+        (error) => {
+          console.error(error);
+          setAddress(""); // Clear if failed
+          // Optional: alert("Lokatsiya uchun ruxsat kerak");
+        }
+      );
     } else {
       alert("Brauzeringiz lokatsiyani qo'llab quvvatlamaydi.");
     }
@@ -86,11 +112,11 @@ export default function ProfilePage() {
       alert("Xatolik yuz berdi!");
       console.error(error);
     } else {
-      alert("Ma'lumotlar saqlandi!");
+      alert("Muvaffaqiyatli saqlandi! Endi buyurtma berishingiz mumkin.");
     }
   }
 
-  // --- VIEW 1: GUEST MENU ---
+  // --- VIEW 1: GUEST MENU (First time users) ---
   if (view === 'guest') {
     return (
       <main className="min-h-screen bg-gray-50 pb-20 p-4">
@@ -117,13 +143,7 @@ export default function ProfilePage() {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <MenuItem icon={Building2} label="Filiallarimiz" />
             <MenuItem icon={FileText} label="Kompaniya haqida" />
-            <MenuItem icon={ShieldCheck} label="Foydalanish shartlari" />
-            <MenuItem icon={ShieldCheck} label="Maxfiylik siyosati" />
             <MenuItem icon={Globe} label="Ilova tili" isLast />
-        </div>
-
-        <div className="text-center mt-8 text-gray-400 text-xs">
-            Bizni ijtimoiy tarmoqlarda kuzatib boring
         </div>
 
         <BottomNav />
@@ -131,7 +151,7 @@ export default function ProfilePage() {
     );
   }
 
-  // --- VIEW 2: EDIT FORM ---
+  // --- VIEW 2: LOGIN / EDIT FORM ---
   return (
     <main className="min-h-screen bg-gray-50 pb-20 p-4">
       <div className="flex items-center mb-6">
@@ -150,20 +170,22 @@ export default function ProfilePage() {
             <p className="text-gray-500 text-sm">ID: {user?.id}</p>
         </div>
         
+        {/* Phone Input */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Telefon raqam</label>
-            <div className="flex items-center border rounded-lg px-3 py-2 bg-gray-50">
+            <div className="flex items-center border rounded-lg px-3 py-3 bg-gray-50 focus-within:ring-2 ring-orange-200 transition-all">
                 <Phone size={18} className="text-gray-400 mr-2" />
                 <input 
                     type="tel" 
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="bg-transparent w-full outline-none"
-                    placeholder="+998 90 123 45 67"
+                    className="bg-transparent w-full outline-none text-lg font-medium"
+                    placeholder="+998"
                 />
             </div>
         </div>
 
+        {/* Location Input */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Manzil</label>
             <div className="flex gap-2">
@@ -171,22 +193,23 @@ export default function ProfilePage() {
                     type="text" 
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="border rounded-lg px-3 py-2 bg-gray-50 w-full outline-none text-sm"
-                    placeholder="Manzilni kiriting..."
+                    className="border rounded-lg px-3 py-3 bg-gray-50 w-full outline-none text-sm"
+                    placeholder="Manzilni aniqlash..."
                 />
                 <button 
                     onClick={handleGetLocation}
-                    className="bg-blue-100 text-blue-600 p-2 rounded-lg active:scale-95"
+                    className="bg-blue-100 text-blue-600 p-3 rounded-lg active:scale-95 transition-colors hover:bg-blue-200"
                 >
-                    <MapPin size={20} />
+                    <MapPin size={24} />
                 </button>
             </div>
+            <p className="text-[10px] text-gray-400 mt-1">Lokatsiya avtomatik aniqlanadi</p>
         </div>
 
         <button 
             onClick={handleSave}
             disabled={loading}
-            className="w-full bg-green-500 text-white py-3 rounded-xl font-bold shadow-md active:scale-95 flex justify-center items-center"
+            className="w-full bg-green-500 text-white py-4 rounded-xl font-bold shadow-lg active:scale-95 flex justify-center items-center text-lg mt-4"
         >
             {loading ? <Loader2 className="animate-spin" /> : "Saqlash"}
         </button>
