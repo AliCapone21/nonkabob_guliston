@@ -18,7 +18,6 @@ declare global {
 export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(""); 
-  // Default to +998 and prevent changing it easily
   const [phone, setPhone] = useState("+998");
   const [address, setAddress] = useState("");
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -67,7 +66,6 @@ export default function ProfilePage() {
       } else {
         setView('form');
         setNeedsPhone(true);
-        // Try auto-asking for phone (Native Popup)
         setTimeout(requestContact, 500); 
       }
     } else {
@@ -81,31 +79,41 @@ export default function ProfilePage() {
     if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.requestContact((success: boolean, event: any) => {
             if (success) {
-                const sharedPhone = event?.response?.contact?.phone_number;
-                if (sharedPhone) {
-                    // Clean the number (remove + if exists to standardize)
-                    let cleanPhone = sharedPhone.replace('+', '');
+                // 1. Try to find the phone number in multiple possible places
+                // Android/iOS sometimes structure this differently
+                const contactData = event?.response?.contact || event?.contact;
+                
+                if (contactData && contactData.phone_number) {
+                    let rawPhone = contactData.phone_number;
                     
-                    // 1. STRICTLY UZBEKISTAN CHECK
+                    // 2. CLEAN THE NUMBER (Remove spaces, -, (, ), +)
+                    // This turns "+998 90-123-45-67" into "998901234567"
+                    let cleanPhone = rawPhone.replace(/\D/g, ''); 
+
+                    // 3. CHECK FOR UZBEKISTAN CODE
                     if (!cleanPhone.startsWith('998')) {
-                        alert("Kechirasiz, faqat O'zbekiston raqamlari (+998) qabul qilinadi.");
+                        alert(`Kechirasiz, faqat O'zbekiston raqamlari qabul qilinadi. (Sizning raqamingiz: ${rawPhone})`);
                         return;
                     }
 
-                    // Format back to +998...
+                    // 4. FORMAT AND SAVE
                     const finalPhone = `+${cleanPhone}`;
                     setPhone(finalPhone);
                     setNeedsPhone(false);
                     
-                    // 2. AUTO SAVE IMMEDIATELY
+                    // Visual feedback
+                    // alert(`Raqam qabul qilindi: ${finalPhone}`); // Optional debug alert
+
+                    // 5. AUTO SAVE
                     saveProfileDirectly(finalPhone);
+                } else {
+                    alert("Raqamni olishda xatolik. Iltimos, qo'lda kiriting.");
                 }
             }
         });
     }
   };
 
-  // Helper to save profile immediately without clicking a button
   async function saveProfileDirectly(phoneValue: string) {
     if (!user) return;
     setLoading(true);
@@ -114,7 +122,7 @@ export default function ProfilePage() {
       telegram_id: user.id,
       full_name: name,
       phone_number: phoneValue,
-      address_text: address, // Might be empty initially, that's okay
+      address_text: address, 
       latitude: location?.lat,
       longitude: location?.lng,
     };
@@ -122,11 +130,8 @@ export default function ProfilePage() {
     const { error } = await supabase.from('users').upsert(updates);
     setLoading(false);
 
-    if (error) {
-        alert("Xatolik: " + error.message);
-    } else {
+    if (!error) {
         // Success! Ask for location next
-        alert("Raqam saqlandi! Endi manzilingizni aniqlaymiz.");
         handleGetLocation();
     }
   }
@@ -144,11 +149,12 @@ export default function ProfilePage() {
     }
   }
 
-  // Manual Save (for the button)
   async function handleSave() {
     if (!user) return;
-    // Basic validation for manual entry
-    if (!phone.startsWith("+998") || phone.length < 13) { 
+    
+    // Strict Manual Validation
+    const cleanManual = phone.replace(/\D/g, '');
+    if (!cleanManual.startsWith("998") || cleanManual.length < 12) { 
         alert("Iltimos, to'g'ri O'zbekiston raqamini kiriting (+998...)"); 
         return; 
     }
@@ -174,16 +180,12 @@ export default function ProfilePage() {
     }
   }
 
-  // Handle Manual Input to enforce +998
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
-    // If they try to delete +998, stop them
     if (!val.startsWith("+998")) {
         val = "+998";
     }
-    // Limit length (max 13 chars: +998 90 123 45 67)
     if (val.length > 13) return;
-    
     setPhone(val);
   };
 
@@ -215,7 +217,7 @@ export default function ProfilePage() {
         <div className="bg-green-50 border border-green-200 p-4 rounded-xl mb-4 text-center">
           <p className="text-sm text-green-800 mb-3 font-medium">Telefon raqamingiz kerak.</p>
           <button onClick={requestContact} className="w-full bg-green-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md active:scale-95">
-            <Send size={18} /> Raqamni ulashish
+            <Send size={18} /> Raqamni ulashish (Avto)
           </button>
         </div>
       )}
@@ -242,7 +244,7 @@ export default function ProfilePage() {
                 <input 
                     type="tel" 
                     value={phone} 
-                    onChange={handlePhoneChange} // <--- LOCKED TO +998
+                    onChange={handlePhoneChange} 
                     className="bg-transparent w-full outline-none text-lg font-medium" 
                 />
                 {!needsPhone && <CheckCircle2 size={20} className="text-green-500 ml-2" />}
