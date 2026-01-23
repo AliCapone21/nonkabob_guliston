@@ -5,11 +5,11 @@ import BottomNav from "@/components/BottomNav";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { 
-  MapPin, Phone, Save, Loader2, User as UserIcon, 
+  MapPin, Phone, Loader2, User as UserIcon, 
   ChevronRight, Building2, FileText, ShieldCheck, Globe, 
   ArrowLeft, LogIn, PhoneCall 
 } from "lucide-react";
-import WebApp from "@twa-dev/sdk";
+// DELETED: import WebApp from "@twa-dev/sdk"; <--- THIS WAS CAUSING THE ERROR
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
@@ -17,27 +17,32 @@ export default function ProfilePage() {
   const [address, setAddress] = useState("");
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [user, setUser] = useState<any>(null);
-  
-  // New State: Controls if we show the "Guest Menu" or the "Login Form"
   const [view, setView] = useState<'guest' | 'form'>('guest');
 
   useEffect(() => {
-    // 1. Get Telegram User
-    if (typeof window !== 'undefined' && WebApp.initDataUnsafe.user) {
-      setUser(WebApp.initDataUnsafe.user);
-      checkUserExists(WebApp.initDataUnsafe.user.id);
-    } else {
-      // Fake user for testing on PC
-      const fakeUser = { id: 123456, first_name: "Test User" };
-      setUser(fakeUser);
-      checkUserExists(fakeUser.id);
-    }
+    // Dynamically load the Telegram SDK only on the client
+    const loadTelegram = async () => {
+      if (typeof window !== 'undefined') {
+        const WebApp = (await import('@twa-dev/sdk')).default;
+        
+        if (WebApp.initDataUnsafe.user) {
+          setUser(WebApp.initDataUnsafe.user);
+          checkUserExists(WebApp.initDataUnsafe.user.id);
+        } else {
+          // Fake user for testing in browser (outside Telegram)
+          const fakeUser = { id: 123456, first_name: "Test User" };
+          setUser(fakeUser);
+          checkUserExists(fakeUser.id);
+        }
+      }
+    };
+
+    loadTelegram();
   }, []);
 
   async function checkUserExists(telegramId: number) {
     const { data } = await supabase.from('users').select('*').eq('telegram_id', telegramId).single();
     if (data && data.phone_number) {
-      // If user already has a phone number saved, go straight to the form (or show a "Logged In" dashboard)
       setPhone(data.phone_number);
       setAddress(data.address_text || "");
       setView('form'); 
@@ -82,15 +87,13 @@ export default function ProfilePage() {
       console.error(error);
     } else {
       alert("Ma'lumotlar saqlandi!");
-      // Optionally redirect to menu
     }
   }
 
-  // --- VIEW 1: GUEST MENU (Matches your screenshot) ---
+  // --- VIEW 1: GUEST MENU ---
   if (view === 'guest') {
     return (
       <main className="min-h-screen bg-gray-50 pb-20 p-4">
-        {/* Login Card */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-4 text-center">
             <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <LogIn className="text-orange-500" size={32} />
@@ -111,7 +114,6 @@ export default function ProfilePage() {
             </button>
         </div>
 
-        {/* Menu List */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <MenuItem icon={Building2} label="Filiallarimiz" />
             <MenuItem icon={FileText} label="Kompaniya haqida" />
@@ -129,7 +131,7 @@ export default function ProfilePage() {
     );
   }
 
-  // --- VIEW 2: EDIT FORM (My previous code) ---
+  // --- VIEW 2: EDIT FORM ---
   return (
     <main className="min-h-screen bg-gray-50 pb-20 p-4">
       <div className="flex items-center mb-6">
@@ -148,7 +150,6 @@ export default function ProfilePage() {
             <p className="text-gray-500 text-sm">ID: {user?.id}</p>
         </div>
         
-        {/* Phone Input */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Telefon raqam</label>
             <div className="flex items-center border rounded-lg px-3 py-2 bg-gray-50">
@@ -163,7 +164,6 @@ export default function ProfilePage() {
             </div>
         </div>
 
-        {/* Location Input */}
         <div>
             <label className="block text-sm text-gray-500 mb-1">Manzil</label>
             <div className="flex gap-2">
@@ -197,7 +197,6 @@ export default function ProfilePage() {
   );
 }
 
-// Helper component for the list items
 function MenuItem({ icon: Icon, label, isLast }: { icon: any, label: string, isLast?: boolean }) {
     return (
         <div className={`flex items-center justify-between p-4 ${!isLast ? 'border-b border-gray-100' : ''} active:bg-gray-50`}>
