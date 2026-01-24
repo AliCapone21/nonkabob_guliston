@@ -10,7 +10,7 @@ export const translations = {
     nav_orders: "Buyurtmalar",
     nav_profile: "Profil",
 
-    // --- MENU CATEGORIES (REQUIRED FOR BUILD FIX) ---
+    // --- MENU CATEGORIES (THIS WAS MISSING) ---
     cat_all: "Barchasi",
     cat_non_kabob: "Non Kabob",
     cat_hot_dog: "Xot-Dog",
