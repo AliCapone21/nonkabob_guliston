@@ -10,7 +10,7 @@ export const translations = {
     nav_orders: "Buyurtmalar",
     nav_profile: "Profil",
 
-    // --- MENU CATEGORIES (New) ---
+    // --- MENU CATEGORIES (REQUIRED FOR BUILD) ---
     cat_all: "Barchasi",
     cat_non_kabob: "Non Kabob",
     cat_hot_dog: "Xot-Dog",
@@ -65,7 +65,7 @@ export const translations = {
     nav_orders: "Заказы",
     nav_profile: "Профиль",
 
-    // --- MENU CATEGORIES (New) ---
+    // --- MENU CATEGORIES ---
     cat_all: "Все",
     cat_non_kabob: "Нон Кабоб",
     cat_hot_dog: "Хот-Дог",
@@ -120,7 +120,7 @@ export const translations = {
     nav_orders: "Orders",
     nav_profile: "Profile",
 
-    // --- MENU CATEGORIES (New) ---
+    // --- MENU CATEGORIES ---
     cat_all: "All",
     cat_non_kabob: "Non Kabob",
     cat_hot_dog: "Hot Dog",
