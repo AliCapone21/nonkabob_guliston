@@ -5,7 +5,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext"; // <--- 2. Import Language Context
-import WelcomeGate from "@/components/WelcomeGate";
 import Script from "next/script";
 import { useState, useEffect } from "react";
 
@@ -108,9 +107,9 @@ export default function RootLayout({
         {/* Wrap the whole app in Providers */}
         <LanguageProvider>
           <CartProvider>
-           <AppContent>
-  <WelcomeGate>{children}</WelcomeGate>
-</AppContent>
+             <AppContent>
+                {children}
+             </AppContent>
           </CartProvider>
         </LanguageProvider>
       </body>
