@@ -12,14 +12,14 @@ export const products = [
   { 
     id: 2, 
     name: "Ot Go'shtli", 
-    price: 35000, 
+    price: 40000, 
     image: "/food/ot.jpg", 
     category: 'non_kabob' 
   },
   { 
     id: 3, 
     name: "Mol Go'shtli", 
-    price: 40000, 
+    price: 35000, 
     image: "/food/mol.jpg", 
     category: 'non_kabob' 
   },
