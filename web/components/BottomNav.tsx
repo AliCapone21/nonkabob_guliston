@@ -1,52 +1,72 @@
 // components/BottomNav.tsx
 "use client";
 
-import { Home, ShoppingCart, ClipboardList, User } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // <--- 1. Import this to check current page
+import { Home, ShoppingCart, ClipboardList, User } from "lucide-react";
+import { useCart } from "@/context/CartContext";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function BottomNav() {
   const { items } = useCart();
-  const pathname = usePathname(); // <--- 2. Get current URL path
-  
+  const pathname = usePathname();
+
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Helper function to decide color: Orange if active, Gray if not
-  const isActive = (path: string) => pathname === path ? "text-orange-500" : "text-gray-400";
+  // Active if exact or sub-route (e.g. /orders/123)
+  const isActive = (path: string) =>
+    pathname === path || pathname.startsWith(path + "/");
+
+  const baseItem =
+    "flex flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors";
+  const active = "text-orange-500";
+  const inactive = "text-gray-400";
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 px-6 flex justify-between items-center z-50">
-      
-      {/* MENU */}
-      <Link href="/" className={`flex flex-col items-center ${isActive('/')}`}>
-        <Home size={24} />
-        <span className="text-[10px] font-medium mt-1">Menu</span>
-      </Link>
-      
-      {/* CART */}
-      <Link href="/cart" className={`flex flex-col items-center relative ${isActive('/cart')}`}>
-        <ShoppingCart size={24} />
-        {itemCount > 0 && (
-          <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-            {itemCount}
-          </span>
-        )}
-        <span className="text-[10px] font-medium mt-1">Savat</span>
-      </Link>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.05)]">
+      <div className="flex justify-between items-center px-6 py-2">
+        {/* MENU */}
+        <Link
+          href="/"
+          className={`${baseItem} ${isActive("/") ? active : inactive}`}
+        >
+          <Home size={22} strokeWidth={isActive("/") ? 2.5 : 2} />
+          <span>Menu</span>
+        </Link>
 
-      {/* ORDERS */}
-      <Link href="/orders" className={`flex flex-col items-center ${isActive('/orders')}`}>
-        <ClipboardList size={24} />
-        <span className="text-[10px] font-medium mt-1">Buyurtma</span>
-      </Link>
+        {/* CART */}
+        <Link
+          href="/cart"
+          className={`${baseItem} relative ${isActive("/cart") ? active : inactive}`}
+        >
+          <ShoppingCart size={22} strokeWidth={isActive("/cart") ? 2.5 : 2} />
 
-      {/* PROFILE - FIXED: Changed div to Link */}
-      <Link href="/profile" className={`flex flex-col items-center ${isActive('/profile')}`}>
-        <User size={24} />
-        <span className="text-[10px] font-medium mt-1">Profil</span>
-      </Link>
-      
-    </div>
+          {itemCount > 0 && (
+            <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow">
+              {itemCount}
+            </span>
+          )}
+
+          <span>Savat</span>
+        </Link>
+
+        {/* ORDERS */}
+        <Link
+          href="/orders"
+          className={`${baseItem} ${isActive("/orders") ? active : inactive}`}
+        >
+          <ClipboardList size={22} strokeWidth={isActive("/orders") ? 2.5 : 2} />
+          <span>Buyurtma</span>
+        </Link>
+
+        {/* PROFILE */}
+        <Link
+          href="/profile"
+          className={`${baseItem} ${isActive("/profile") ? active : inactive}`}
+        >
+          <User size={22} strokeWidth={isActive("/profile") ? 2.5 : 2} />
+          <span>Profil</span>
+        </Link>
+      </div>
+    </nav>
   );
 }

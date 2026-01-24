@@ -1,9 +1,9 @@
 // components/ProductCard.tsx
-"use client"; // This component needs interactivity
+"use client";
 
-import Image from 'next/image';
-import { useCart } from '@/context/CartContext';
-import { Plus, Minus } from 'lucide-react';
+import Image from "next/image";
+import { useCart } from "@/context/CartContext";
+import { Plus, Minus } from "lucide-react";
 
 interface ProductProps {
   product: {
@@ -19,43 +19,71 @@ export default function ProductCard({ product }: ProductProps) {
   const quantity = getItemCount(product.id);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
-      <div className="relative h-32 w-full">
-        <Image 
-          src={product.image} 
+    <div className="group bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col transition-transform duration-200 active:scale-[0.98]">
+      {/* Image */}
+      <div className="relative w-full aspect-[4/3] overflow-hidden">
+        <Image
+          src={product.image}
           alt={product.name}
           fill
-          className="object-cover"
+          sizes="(max-width: 768px) 50vw, 25vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+          priority={false}
         />
+        {/* subtle gradient for readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/0 to-black/0" />
+
+        {/* Quantity badge */}
+        {quantity > 0 && (
+          <div className="absolute top-2 right-2">
+            <span className="inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full text-xs font-bold text-white bg-orange-500 shadow">
+              {quantity}
+            </span>
+          </div>
+        )}
       </div>
+
+      {/* Content */}
       <div className="p-3 flex flex-col flex-grow">
-        <h3 className="font-bold text-gray-800">{product.name}</h3>
-        <p className="text-sm text-gray-500 mb-3">
-            {product.price.toLocaleString()} UZS
+        <h3 className="font-extrabold text-gray-900 leading-snug line-clamp-2">
+          {product.name}
+        </h3>
+        <p className="text-sm text-gray-500 mt-1 mb-3">
+          {product.price.toLocaleString()} UZS
         </p>
 
+        {/* CTA */}
         {quantity === 0 ? (
-          <button 
+          <button
             onClick={() => addToCart(product)}
-            className="mt-auto w-full bg-orange-500 text-white py-2 rounded-lg text-sm font-semibold active:scale-95 transition-transform"
+            className="mt-auto w-full bg-orange-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-md shadow-orange-500/20 active:scale-95 transition-transform"
           >
-            Add
+            Qo‘shish
           </button>
         ) : (
-          <div className="mt-auto flex items-center justify-between bg-gray-100 rounded-lg p-1">
-             <button 
-                onClick={() => removeFromCart(product.id)}
-                className="p-1 bg-white rounded-md shadow-sm text-gray-600 active:scale-95"
-             >
-                <Minus size={16} />
-             </button>
-             <span className="font-bold text-gray-800 text-sm">{quantity}</span>
-             <button 
-                onClick={() => addToCart(product)}
-                className="p-1 bg-white rounded-md shadow-sm text-orange-500 active:scale-95"
-             >
-                <Plus size={16} />
-             </button>
+          <div className="mt-auto flex items-center justify-between bg-gray-100 rounded-xl p-1.5">
+            <button
+              onClick={() => removeFromCart(product.id)}
+              className="h-9 w-9 flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-100 text-gray-700 active:scale-95 transition-transform"
+              aria-label="Decrease"
+            >
+              <Minus size={18} />
+            </button>
+
+            <div className="flex flex-col items-center">
+              <span className="text-[11px] text-gray-400 leading-none">Soni</span>
+              <span className="font-extrabold text-gray-900 text-base leading-tight">
+                {quantity}
+              </span>
+            </div>
+
+            <button
+              onClick={() => addToCart(product)}
+              className="h-9 w-9 flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-100 text-orange-500 active:scale-95 transition-transform"
+              aria-label="Increase"
+            >
+              <Plus size={18} />
+            </button>
           </div>
         )}
       </div>
