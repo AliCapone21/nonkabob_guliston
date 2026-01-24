@@ -1,0 +1,117 @@
+// lib/translations.ts
+
+export type LangType = 'uz' | 'ru' | 'en';
+
+export const translations = {
+  uz: {
+    // Bottom Nav
+    nav_menu: "Menyu",
+    nav_cart: "Savat",
+    nav_orders: "Buyurtmalar",
+    nav_profile: "Profil",
+
+    // Profile Page
+    login_title: "Profilga kirish",
+    login_desc: "Buyurtma berish va kuzatish uchun tizimga kiring.",
+    login_btn: "Kirish",
+    call_btn: "Biz bilan bog'laning",
+    menu_branches: "Bizning filiallar",
+    menu_about: "Biz haqimizda",
+    menu_privacy: "Maxfiylik siyosati",
+    lang_label: "Ilova tili",
+    social_label: "Bizni ijtimoiy tarmoqlarda kuzatib boring",
+    form_title: "Ma'lumotlarni kiritish",
+    name_label: "Ismingiz",
+    phone_label: "Telefon raqam",
+    address_label: "Manzil",
+    address_placeholder: "Manzilni aniqlash...",
+    save_btn: "Saqlash",
+    share_phone: "Raqamni ulashish (Avto)",
+    location_btn: "Lokatsiya aniqlanmoqda...",
+    branch_title: "Filiallar",
+    branch_name: "Guliston Shaxar filiali",
+    about_title: "Biz haqimizda",
+    about_text: "Guliston Nonkabob - bu eng mazali va sifatli taomlar maskani.",
+    privacy_title: "Maxfiylik siyosati",
+    privacy_text: "Sizning ma'lumotlaringiz qat'iy himoyalangan.",
+    contact_title: "Aloqa",
+    contact_copy: "Nusxalash",
+    copied: "Nusxalandi!",
+    
+    // Global
+    welcome_select_lang: "Iltimos, tilni tanlang",
+    continue: "Davom etish"
+  },
+  ru: {
+    nav_menu: "Меню",
+    nav_cart: "Корзина",
+    nav_orders: "Заказы",
+    nav_profile: "Профиль",
+
+    login_title: "Вход в профиль",
+    login_desc: "Войдите, чтобы заказывать и отслеживать доставку.",
+    login_btn: "Войти",
+    call_btn: "Связаться с нами",
+    menu_branches: "Наши филиалы",
+    menu_about: "О нас",
+    menu_privacy: "Политика конфиденциальности",
+    lang_label: "Язык приложения",
+    social_label: "Следите за нами в соцсетях",
+    form_title: "Введите данные",
+    name_label: "Ваше имя",
+    phone_label: "Номер телефона",
+    address_label: "Адрес",
+    address_placeholder: "Определение адреса...",
+    save_btn: "Сохранить",
+    share_phone: "Поделиться номером",
+    location_btn: "Определение локации...",
+    branch_title: "Филиалы",
+    branch_name: "Филиал г. Гулистан",
+    about_title: "О нас",
+    about_text: "Guliston Nonkabob - это место самых вкусных блюд.",
+    privacy_title: "Конфиденциальность",
+    privacy_text: "Ваши данные надежно защищены.",
+    contact_title: "Контакты",
+    contact_copy: "Копировать",
+    copied: "Скопировано!",
+    
+    welcome_select_lang: "Пожалуйста, выберите язык",
+    continue: "Продолжить"
+  },
+  en: {
+    nav_menu: "Menu",
+    nav_cart: "Cart",
+    nav_orders: "Orders",
+    nav_profile: "Profile",
+
+    login_title: "Profile Login",
+    login_desc: "Log in to order and track deliveries.",
+    login_btn: "Log In",
+    call_btn: "Contact Us",
+    menu_branches: "Our Branches",
+    menu_about: "About Us",
+    menu_privacy: "Privacy Policy",
+    lang_label: "App Language",
+    social_label: "Follow us",
+    form_title: "Enter Details",
+    name_label: "Your Name",
+    phone_label: "Phone Number",
+    address_label: "Address",
+    address_placeholder: "Locating address...",
+    save_btn: "Save",
+    share_phone: "Share Number",
+    location_btn: "Locating...",
+    branch_title: "Branches",
+    branch_name: "Guliston City Branch",
+    about_title: "About Us",
+    about_text: "Guliston Nonkabob is the place for delicious meals.",
+    privacy_title: "Privacy Policy",
+    privacy_text: "Your data is strictly protected.",
+    contact_title: "Contact",
+    contact_copy: "Copy",
+    copied: "Copied!",
+    
+    welcome_select_lang: "Please select a language",
+    continue: "Continue"
+  }
+};

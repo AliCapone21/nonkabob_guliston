@@ -23,46 +23,50 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Determine who the user is
     const fetchUserOrders = async () => {
-      let telegramUserId = 123456; // Default "Guest" ID for computer testing
+      let telegramUserId: number | null = null;
 
-      // Check if running inside Telegram
-      if (typeof window !== 'undefined') {
-        try {
-           // Dynamic import to prevent "window not defined" error
-           const WebApp = (await import('@twa-dev/sdk')).default;
-           if (WebApp.initDataUnsafe.user) {
-             telegramUserId = WebApp.initDataUnsafe.user.id;
-           }
-        } catch (e) {
-           console.log("Not in Telegram, using Guest ID");
+      if (typeof window !== "undefined") {
+        // Telegram user (real)
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+          telegramUserId = window.Telegram.WebApp.initDataUnsafe.user.id as number;
+        }
+        // Localhost test user
+        else if (window.location.hostname === "localhost") {
+          telegramUserId = 123456;
         }
       }
 
-      // 2. Fetch ONLY this user's orders
+      // If no ID -> treat as guest with no orders
+      if (!telegramUserId) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch ONLY this user's orders (using BIGINT FK)
       const { data, error } = await supabase
-        .from('orders')
-        .select(`
+        .from("orders")
+        .select(
+          `
           *,
           order_items (product_name, quantity)
-        `)
-        .eq('telegram_user_id', telegramUserId) // <--- THE IMPORTANT FIX
-        .order('created_at', { ascending: false });
+        `
+        )
+        .eq("user_id", telegramUserId) // ✅ FIX: use BIGINT FK (orders.user_id)
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching orders:", error);
+        setOrders([]);
       } else {
-        setOrders(data || []);
+        setOrders((data as Order[]) || []);
       }
+
       setLoading(false);
     };
 
     fetchUserOrders();
-
-    // (Optional) Real-time listener could be added here, 
-    // but requires careful filtering setup. For now, simple fetch is safer.
-
   }, []);
 
   return (
@@ -74,26 +78,29 @@ export default function OrdersPage() {
       <div className="p-4 space-y-4">
         {loading ? (
           <div className="flex justify-center mt-10">
-             <Loader2 className="animate-spin text-orange-500" />
+            <Loader2 className="animate-spin text-orange-500" />
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center mt-10">
-            <p className="text-gray-500 mb-4">Hozircha buyurtmalar yo'q</p>
+            <p className="text-gray-500 mb-4">Hozircha buyurtmalar yo&apos;q</p>
             <Link href="/" className="text-orange-500 font-semibold">
-              Menyuga o'tish
+              Menyuga o&apos;tish
             </Link>
           </div>
         ) : (
           orders.map((order) => (
-            <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div
+              key={order.id}
+              className="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
+            >
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <span className="text-xs text-gray-400">Buyurtma #{order.id}</span>
                   <p className="font-bold text-gray-800">
-                    {order.total_price.toLocaleString()} UZS
+                    {Number(order.total_price).toLocaleString()} UZS
                   </p>
                   <p className="text-xs text-gray-400">
-                    {new Date(order.created_at).toLocaleString('uz-UZ')}
+                    {new Date(order.created_at).toLocaleString("uz-UZ")}
                   </p>
                 </div>
                 <StatusBadge status={order.status} />
@@ -102,9 +109,12 @@ export default function OrdersPage() {
               <div className="border-t border-dashed border-gray-200 my-3"></div>
 
               <div className="space-y-1">
-                {order.order_items.map((item, index) => (
+                {(order.order_items ?? []).map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
-                    <span className="text-gray-600">{item.product_name} <span className="text-xs text-gray-400">x{item.quantity}</span></span>
+                    <span className="text-gray-600">
+                      {item.product_name}{" "}
+                      <span className="text-xs text-gray-400">x{item.quantity}</span>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -120,17 +130,39 @@ export default function OrdersPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const styles = {
-    pending: { bg: "bg-yellow-100", text: "text-yellow-700", icon: Clock, label: "Kutilmoqda" },
-    cooking: { bg: "bg-blue-100", text: "text-blue-700", icon: ChefHat, label: "Tayyorlanmoqda" },
-    delivered: { bg: "bg-green-100", text: "text-green-700", icon: CheckCircle2, label: "Yetkazildi" },
-    cancelled: { bg: "bg-red-100", text: "text-red-700", icon: XCircle, label: "Bekor qilindi" },
+    pending: {
+      bg: "bg-yellow-100",
+      text: "text-yellow-700",
+      icon: Clock,
+      label: "Kutilmoqda",
+    },
+    cooking: {
+      bg: "bg-blue-100",
+      text: "text-blue-700",
+      icon: ChefHat,
+      label: "Tayyorlanmoqda",
+    },
+    delivered: {
+      bg: "bg-green-100",
+      text: "text-green-700",
+      icon: CheckCircle2,
+      label: "Yetkazildi",
+    },
+    cancelled: {
+      bg: "bg-red-100",
+      text: "text-red-700",
+      icon: XCircle,
+      label: "Bekor qilindi",
+    },
   };
 
   const config = styles[status as keyof typeof styles] || styles.pending;
   const Icon = config.icon;
 
   return (
-    <div className={`${config.bg} ${config.text} px-3 py-1 rounded-full text-xs font-medium flex items-center`}>
+    <div
+      className={`${config.bg} ${config.text} px-3 py-1 rounded-full text-xs font-medium flex items-center`}
+    >
       <Icon size={14} className="mr-1" />
       {config.label}
     </div>
