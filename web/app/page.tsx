@@ -7,123 +7,119 @@ import { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 
 // 1. Define Category Types
-type CategoryId = 'non_kabob' | 'hot_dog' | 'cold_drinks' | 'hot_drinks' | 'sauces';
+type CategoryId = 'non_kabob' | 'tea' | 'coffee';
 
-// 2. Define Products Data (Using LOCAL Images)
+// 2. Define Products Data (Filenames matched to your screenshot)
 const PRODUCTS = [
   // --- NON KABOB ---
   { 
     id: 1, 
-    name: "Tovuqli Non Kabob", 
-    price: 28000, 
-    image: "/food/nonkabob1.jpg", 
+    name: "Tovuq Go'shtli", 
+    price: 25000, 
+    image: "/food/tovuq.jpg", 
     category: 'non_kabob' 
   },
   { 
     id: 2, 
-    name: "Mol Go'shtli Non Kabob", 
-    price: 32000, 
-    image: "/food/nonkabob2.jpg", 
+    name: "Ot Go'shtli", 
+    price: 35000, 
+    image: "/food/ot.jpg", 
     category: 'non_kabob' 
   },
   { 
     id: 3, 
-    name: "Assorti Non Kabob", 
-    price: 35000, 
-    image: "/food/nonkabob3.jpg", 
+    name: "Mol Go'shtli", 
+    price: 40000, 
+    image: "/food/mol.jpg", 
+    category: 'non_kabob' 
+  },
+  { 
+    id: 4, 
+    name: "Qo'y Go'shtli", 
+    price: 40000, 
+    image: "/food/qoy.jpg", 
     category: 'non_kabob' 
   },
 
-  // --- HOT DOG ---
+  // --- CHOYLAR (TEAS) ---
   { 
     id: 10, 
-    name: "Classic Hot Dog", 
-    price: 18000, 
-    image: "/food/hotdog1.jpg", 
-    category: 'hot_dog' 
+    name: "Qora / Ko'k Choy", 
+    price: 3000, 
+    image: "/food/qorakokchoy.jpg", 
+    category: 'tea' 
   },
   { 
     id: 11, 
-    name: "Cheese Hot Dog", 
-    price: 22000, 
-    image: "/food/hotdog2.jpg", 
-    category: 'hot_dog' 
+    name: "Limon Choy", 
+    price: 8000, 
+    image: "/food/limonchoy.jpg", 
+    category: 'tea' 
   },
   { 
     id: 12, 
-    name: "Royal Hot Dog", 
-    price: 25000, 
-    image: "/food/hotdog3.jpg", 
-    category: 'hot_dog' 
+    name: "Malina Limon", 
+    price: 10000, 
+    image: "/food/malinalimon.jpg", 
+    category: 'tea' 
+  },
+  { 
+    id: 13, 
+    name: "Limon Imbir", 
+    price: 12000, 
+    image: "/food/limonimbir.jpg", 
+    category: 'tea' 
+  },
+  { 
+    id: 14, 
+    name: "Karak Choy", 
+    price: 15000, 
+    image: "/food/karakchoy.jpg", 
+    category: 'tea' 
+  },
+  { 
+    id: 15, 
+    name: "Yasmin", 
+    price: 8000, 
+    image: "/food/yasminchoy.jpg", 
+    category: 'tea' 
   },
 
-  // --- COLD DRINKS ---
+  // --- COFFEE ---
   { 
     id: 20, 
-    name: "Coca Cola 0.5L", 
-    price: 8000, 
-    image: "/food/cola.jpg", 
-    category: 'cold_drinks' 
+    name: "Espresso", 
+    price: 9000, 
+    image: "/food/ekspresso.jpg", 
+    category: 'coffee' 
   },
   { 
     id: 21, 
-    name: "Fanta 0.5L", 
-    price: 8000, 
-    image: "/food/fanta.jpg", 
-    category: 'cold_drinks' 
+    name: "Americano", 
+    price: 15000, 
+    image: "/food/americano.jpg", 
+    category: 'coffee' 
   },
   { 
     id: 22, 
-    name: "Moxito (Ice)", 
-    price: 15000, 
-    image: "/food/mojito.jpg", 
-    category: 'cold_drinks' 
-  },
-
-  // --- HOT DRINKS ---
-  { 
-    id: 30, 
-    name: "Qora Choy", 
-    price: 5000, 
-    image: "/food/tea_black.jpg", 
-    category: 'hot_drinks' 
+    name: "Cappuccino", 
+    price: 20000, 
+    image: "/food/cappucino.jpg", 
+    category: 'coffee' 
   },
   { 
-    id: 31, 
-    name: "Ko'k Choy", 
-    price: 5000, 
-    image: "/food/tea_green.jpg", 
-    category: 'hot_drinks' 
+    id: 23, 
+    name: "Latte", 
+    price: 20000, 
+    image: "/food/latte.jpg", 
+    category: 'coffee' 
   },
   { 
-    id: 32, 
-    name: "Limon Choy", 
-    price: 8000, 
-    image: "/food/tea_lemon.jpg", 
-    category: 'hot_drinks' 
-  },
-
-  // --- SAUCES ---
-  { 
-    id: 40, 
-    name: "Ketchup", 
-    price: 3000, 
-    image: "/food/ketchup.jpg", 
-    category: 'sauces' 
-  },
-  { 
-    id: 41, 
-    name: "Mayonez", 
-    price: 3000, 
-    image: "/food/mayo.jpg", 
-    category: 'sauces' 
-  },
-  { 
-    id: 42, 
-    name: "Pishloqli Sous", 
-    price: 4000, 
-    image: "/food/cheese_sauce.jpg", 
-    category: 'sauces' 
+    id: 24, 
+    name: "Flat White", 
+    price: 25000, 
+    image: "/food/flatwhite.jpg", 
+    category: 'coffee' 
   },
 ];
 
@@ -134,13 +130,10 @@ export default function Home() {
   // Define Tabs using Global Translations
   const tabs: { id: CategoryId; label: string }[] = [
     { id: 'non_kabob', label: t.cat_non_kabob },
-    { id: 'hot_dog', label: t.cat_hot_dog },
-    { id: 'cold_drinks', label: t.cat_cold_drinks },
-    { id: 'hot_drinks', label: t.cat_hot_drinks },
-    { id: 'sauces', label: t.cat_sauces },
+    { id: 'tea', label: t.cat_tea },
+    { id: 'coffee', label: t.cat_coffee },
   ];
 
-  // Filter Products
   const filteredProducts = PRODUCTS.filter(p => p.category === activeTab);
 
   return (

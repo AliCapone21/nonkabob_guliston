@@ -10,13 +10,10 @@ export const translations = {
     nav_orders: "Buyurtmalar",
     nav_profile: "Profil",
 
-    // --- MENU CATEGORIES (THIS WAS MISSING) ---
-    cat_all: "Barchasi",
+    // --- MENU CATEGORIES (UPDATED) ---
     cat_non_kabob: "Non Kabob",
-    cat_hot_dog: "Xot-Dog",
-    cat_cold_drinks: "Yaxna ichimliklar",
-    cat_hot_drinks: "Issiq ichimliklar",
-    cat_sauces: "Souslar va Qo'shimchalar",
+    cat_tea: "Choylar",
+    cat_coffee: "Qahva",
 
     // --- PROFILE & LOGIN ---
     login_title: "Profilga kirish",
@@ -49,7 +46,7 @@ export const translations = {
     about_title: "Biz haqimizda",
     about_text: "Guliston Nonkabob - bu eng mazali va sifatli taomlar maskani.",
     privacy_title: "Maxfiylik siyosati",
-    privacy_text: "Sizning ma'lumotlaringiz qat'iy himoyalangan. Biz sizning telefon raqamingiz va manzilingizni uchinchi shaxslarga bermaymiz.",
+    privacy_text: "Sizning ma'lumotlaringiz qat'iy himoyalangan.",
     contact_title: "Aloqa",
     contact_copy: "Nusxalash",
     copied: "Nusxalandi!",
@@ -66,12 +63,9 @@ export const translations = {
     nav_profile: "Профиль",
 
     // --- MENU CATEGORIES ---
-    cat_all: "Все",
     cat_non_kabob: "Нон Кабоб",
-    cat_hot_dog: "Хот-Дог",
-    cat_cold_drinks: "Холодные напитки",
-    cat_hot_drinks: "Горячие напитки",
-    cat_sauces: "Соусы & Добавки",
+    cat_tea: "Чай",
+    cat_coffee: "Кофе",
 
     // --- PROFILE & LOGIN ---
     login_title: "Вход в профиль",
@@ -102,9 +96,9 @@ export const translations = {
     branch_title: "Филиалы",
     branch_name: "Филиал г. Гулистан",
     about_title: "О нас",
-    about_text: "Guliston Nonkabob - это место самых вкусных и качественных блюд.",
+    about_text: "Guliston Nonkabob - это место самых вкусных блюд.",
     privacy_title: "Конфиденциальность",
-    privacy_text: "Ваши данные надежно защищены. Мы не передаем ваш номер телефона и адрес третьим лицам.",
+    privacy_text: "Ваши данные надежно защищены.",
     contact_title: "Контакты",
     contact_copy: "Копировать",
     copied: "Скопировано!",
@@ -121,12 +115,9 @@ export const translations = {
     nav_profile: "Profile",
 
     // --- MENU CATEGORIES ---
-    cat_all: "All",
     cat_non_kabob: "Non Kabob",
-    cat_hot_dog: "Hot Dog",
-    cat_cold_drinks: "Cold Drinks",
-    cat_hot_drinks: "Hot Drinks",
-    cat_sauces: "Sauces & Extras",
+    cat_tea: "Teas",
+    cat_coffee: "Coffee",
 
     // --- PROFILE & LOGIN ---
     login_title: "Profile Login",
@@ -157,9 +148,9 @@ export const translations = {
     branch_title: "Branches",
     branch_name: "Guliston City Branch",
     about_title: "About Us",
-    about_text: "Guliston Nonkabob is the place for the most delicious and high-quality meals.",
+    about_text: "Guliston Nonkabob is the place for delicious meals.",
     privacy_title: "Privacy Policy",
-    privacy_text: "Your data is strictly protected. We do not share your phone number or address with third parties.",
+    privacy_text: "Your data is strictly protected.",
     contact_title: "Contact",
     contact_copy: "Copy",
     copied: "Copied!",
