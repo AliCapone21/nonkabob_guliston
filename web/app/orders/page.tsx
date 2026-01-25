@@ -4,7 +4,7 @@
 import BottomNav from "@/components/BottomNav";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Clock, CheckCircle2, ChefHat, XCircle, Loader2 } from "lucide-react";
+import { Clock, CheckCircle2, ChefHat, XCircle, Loader2, History, ListOrdered } from "lucide-react";
 import Link from "next/link";
 
 type Order = {
@@ -21,39 +21,30 @@ type Order = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
 
   useEffect(() => {
     const fetchUserOrders = async () => {
       let telegramUserId: number | null = null;
 
       if (typeof window !== "undefined") {
-        // Telegram user (real)
         if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
           telegramUserId = window.Telegram.WebApp.initDataUnsafe.user.id as number;
-        }
-        // Localhost test user
-        else if (window.location.hostname === "localhost") {
+        } else if (window.location.hostname === "localhost") {
           telegramUserId = 123456;
         }
       }
 
-      // If no ID -> treat as guest with no orders
       if (!telegramUserId) {
         setOrders([]);
         setLoading(false);
         return;
       }
 
-      // Fetch ONLY this user's orders (using BIGINT FK)
       const { data, error } = await supabase
         .from("orders")
-        .select(
-          `
-          *,
-          order_items (product_name, quantity)
-        `
-        )
-        .eq("user_id", telegramUserId) // ✅ FIX: use BIGINT FK (orders.user_id)
+        .select(`*, order_items (product_name, quantity)`)
+        .eq("user_id", telegramUserId)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -69,10 +60,48 @@ export default function OrdersPage() {
     fetchUserOrders();
   }, []);
 
+  // --- FILTER LOGIC ---
+  const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'cooking');
+  const historyOrders = orders.filter(o => o.status === 'delivered' || o.status === 'cancelled');
+
+  const displayedOrders = activeTab === 'active' ? activeOrders : historyOrders;
+
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
+      {/* Header */}
       <div className="bg-white p-4 shadow-sm sticky top-0 z-10">
-        <h1 className="text-xl font-bold text-gray-800">Buyurtmalar tarixi</h1>
+        <h1 className="text-xl font-bold text-gray-800 mb-3">Buyurtmalarim</h1>
+        
+        {/* TABS */}
+        <div className="flex bg-gray-100 p-1 rounded-xl">
+            <button 
+                onClick={() => setActiveTab('active')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${
+                    activeTab === 'active' 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-gray-500 hover:bg-gray-200'
+                }`}
+            >
+                <ListOrdered size={16} />
+                Jarayonda
+                {activeOrders.length > 0 && (
+                    <span className="bg-blue-100 text-blue-600 text-xs px-1.5 py-0.5 rounded-full ml-1">
+                        {activeOrders.length}
+                    </span>
+                )}
+            </button>
+            <button 
+                onClick={() => setActiveTab('history')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${
+                    activeTab === 'history' 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-gray-500 hover:bg-gray-200'
+                }`}
+            >
+                <History size={16} />
+                Tarix
+            </button>
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
@@ -80,15 +109,25 @@ export default function OrdersPage() {
           <div className="flex justify-center mt-10">
             <Loader2 className="animate-spin text-orange-500" />
           </div>
-        ) : orders.length === 0 ? (
+        ) : displayedOrders.length === 0 ? (
           <div className="text-center mt-10">
-            <p className="text-gray-500 mb-4">Hozircha buyurtmalar yo&apos;q</p>
-            <Link href="/" className="text-orange-500 font-semibold">
-              Menyuga o&apos;tish
-            </Link>
+            <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                {activeTab === 'active' ? <ListOrdered size={32} /> : <History size={32} />}
+            </div>
+            <p className="text-gray-500 mb-4">
+                {activeTab === 'active' 
+                    ? "Hozirgi vaqtda faol buyurtmalar yo'q" 
+                    : "Buyurtmalar tarixi bo'sh"
+                }
+            </p>
+            {activeTab === 'active' && (
+                <Link href="/" className="text-orange-500 font-semibold bg-orange-50 px-4 py-2 rounded-lg">
+                Menyuga o&apos;tish
+                </Link>
+            )}
           </div>
         ) : (
-          orders.map((order) => (
+          displayedOrders.map((order) => (
             <div
               key={order.id}
               className="bg-white p-4 rounded-xl shadow-sm border border-gray-100"

@@ -1,10 +1,18 @@
 // app/admin/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { RefreshCw, MapPin, Phone, X } from "lucide-react";
+import { 
+  RefreshCw, MapPin, Phone, X, 
+  LayoutList, BarChart3, TrendingUp, Calendar, DollarSign,
+  CheckCircle2, Clock, Ban, Bell, Volume2, Trash2
+} from "lucide-react";
 
+// --- SOUND EFFECT (Base64 "Ding") ---
+const NOTIFICATION_SOUND = "data:audio/mp3;base64,//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
+
+// --- TYPES ---
 type OrderItem = {
   product_name: string;
   quantity: number;
@@ -21,9 +29,35 @@ type Order = {
   order_items: OrderItem[] | null;
 };
 
+// --- MAIN PAGE COMPONENT ---
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [pin, setPin] = useState("");
+
+  // Global audio instance
+  const [audioObj, setAudioObj] = useState<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Load the audio file when page loads
+    const audio = new Audio(NOTIFICATION_SOUND);
+    audio.load();
+    setAudioObj(audio);
+  }, []);
+
+  const handleLogin = () => {
+    if (pin === "1234") {
+      // Unlock audio on first user interaction
+      if (audioObj) {
+        audioObj.play().then(() => {
+            audioObj.pause();
+            audioObj.currentTime = 0;
+        }).catch(e => console.log("Audio permission error:", e));
+      }
+      setAuthorized(true);
+    } else {
+      alert("Noto'g'ri kod!");
+    }
+  };
 
   if (!authorized) {
     return (
@@ -38,11 +72,8 @@ export default function AdminPage() {
             placeholder="PIN kodni kiriting"
           />
           <button
-            onClick={() => {
-              if (pin === "1234") setAuthorized(true);
-              else alert("Noto'g'ri kod!");
-            }}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold"
+            onClick={handleLogin}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold active:scale-95 transition-transform"
           >
             Kirish
           </button>
@@ -51,252 +82,392 @@ export default function AdminPage() {
     );
   }
 
-  return <AdminDashboard />;
+  return <AdminDashboard audio={audioObj} />;
 }
 
-function AdminDashboard() {
+// --- DASHBOARD COMPONENT ---
+function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'orders' | 'stats'>('orders');
+  const [orderFilter, setOrderFilter] = useState<'active' | 'completed' | 'cancelled'>('active');
 
   useEffect(() => {
     fetchOrders();
 
     const channel = supabase
       .channel("admin_orders")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        fetchOrders();
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+              playSound();
+          }
+          fetchOrders();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {
-        fetchOrders();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, fetchOrders)
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { supabase.removeChannel(channel); };
   }, []);
+
+  const playSound = () => {
+      if (audio) {
+          audio.currentTime = 0;
+          audio.play().catch(e => console.error("Sound play failed", e));
+      }
+  };
 
   async function fetchOrders() {
     setRefreshing(true);
-
     const { data, error } = await supabase
       .from("orders")
       .select(`*, order_items (product_name, quantity)`)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching orders:", error);
-      setOrders([]);
-    } else {
-      setOrders((data as Order[]) || []);
-    }
-
+    if (!error) setOrders((data as Order[]) || []);
     setRefreshing(false);
   }
 
-  // ✅ OPTIMISTIC UI: update UI instantly, then update DB
   async function updateStatus(orderId: number, newStatus: Order["status"]) {
-    // 1) remember old status in case we need rollback
     const prev = orders.find((o) => o.id === orderId)?.status;
+    setOrders((curr) => curr.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
 
-    // 2) update UI instantly
-    setOrders((curr) =>
-      curr.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-    );
-
-    // 3) write to DB
     const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
 
     if (error) {
-      console.error("Error updating status:", error);
-
-      // 4) rollback UI if DB failed
-      if (prev) {
-        setOrders((curr) => curr.map((o) => (o.id === orderId ? { ...o, status: prev } : o)));
-      }
-
-      alert("Status o'zgartirishda xatolik. Qayta urinib ko'ring.");
-      return;
+      if (prev) setOrders((curr) => curr.map((o) => (o.id === orderId ? { ...o, status: prev } : o)));
+      alert("Xatolik yuz berdi.");
     }
-
-    // Optional: re-fetch to be 100% synced (not required but safe)
-    // fetchOrders();
   }
 
-  const pillClass = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-700";
-      case "cooking":
-        return "bg-blue-100 text-blue-700";
-      case "delivered":
-        return "bg-green-100 text-green-700";
-      case "cancelled":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
+  // --- ⚠️ CLEAR DATABASE FUNCTION ---
+  async function clearDatabase() {
+    const confirm1 = confirm("DIQQAT! Barcha buyurtmalarni o'chirib tashlamoqchimisiz? (Haftalik tozalash)");
+    if (!confirm1) return;
+
+    const confirm2 = confirm("Bu amalni ortga qaytarib bo'lmaydi. IDlar #1 dan boshlanadi. Tasdiqlaysizmi?");
+    if (!confirm2) return;
+
+    setRefreshing(true);
+    
+    // Call the SQL function
+    const { error } = await supabase.rpc('clear_orders');
+
+    if (error) {
+        alert("Xatolik: " + error.message);
+    } else {
+        alert("Baza tozalandi! Barcha buyurtmalar o'chirildi.");
+        fetchOrders();
     }
+    setRefreshing(false);
+  }
+
+  // --- COUNTERS ---
+  const activeCount = orders.filter(o => o.status === 'pending' || o.status === 'cooking').length;
+  const completedCount = orders.filter(o => o.status === 'delivered').length;
+  const cancelledCount = orders.filter(o => o.status === 'cancelled').length;
+
+  const getFilteredOrders = () => {
+    return orders.filter(o => {
+        if (orderFilter === 'active') return o.status === 'pending' || o.status === 'cooking';
+        if (orderFilter === 'completed') return o.status === 'delivered';
+        if (orderFilter === 'cancelled') return o.status === 'cancelled';
+        return true;
+    });
   };
 
-  const accentBar = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-400";
-      case "cooking":
-        return "bg-blue-500";
-      case "delivered":
-        return "bg-green-500";
-      case "cancelled":
-        return "bg-red-500";
-      default:
-        return "bg-gray-300";
-    }
+  const filteredOrders = getFilteredOrders();
+
+  // --- STATS LOGIC ---
+  const calculateStats = () => {
+    const now = new Date();
+    const deliveredOrders = orders.filter(o => o.status === 'delivered');
+
+    const todayOrders = deliveredOrders.filter(o => {
+        const d = new Date(o.created_at);
+        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const dailyIncome = todayOrders.reduce((sum, o) => sum + o.total_price, 0);
+
+    const monthOrders = deliveredOrders.filter(o => {
+        const d = new Date(o.created_at);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const monthlyIncome = monthOrders.reduce((sum, o) => sum + o.total_price, 0);
+
+    const totalIncome = deliveredOrders.reduce((sum, o) => sum + o.total_price, 0);
+
+    const productCounts: Record<string, number> = {};
+    orders.forEach(order => {
+        if (order.status !== 'cancelled') {
+            order.order_items?.forEach(item => {
+                productCounts[item.product_name] = (productCounts[item.product_name] || 0) + item.quantity;
+            });
+        }
+    });
+
+    const topProducts = Object.entries(productCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5);
+
+    return { dailyIncome, monthlyIncome, totalIncome, topProducts, todayCount: todayOrders.length };
   };
+
+  const stats = calculateStats();
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 pb-20">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Buyurtmalar</h1>
+      {/* HEADER & MAIN TABS */}
+      <div className="bg-white rounded-xl shadow-sm p-2 mb-4 flex justify-between items-center sticky top-2 z-20">
+         <div className="flex bg-gray-100 rounded-lg p-1">
+            <button 
+                onClick={() => setActiveTab('orders')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md font-bold text-sm transition-all ${activeTab === 'orders' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
+            >
+                <LayoutList size={18} /> Buyurtmalar
+            </button>
+            <button 
+                onClick={() => setActiveTab('stats')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md font-bold text-sm transition-all ${activeTab === 'stats' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
+            >
+                <BarChart3 size={18} /> Hisobot
+            </button>
+         </div>
 
-        <button
-          onClick={fetchOrders}
-          className="p-2 bg-white rounded-full shadow-sm disabled:opacity-60"
-          aria-label="Refresh"
-          disabled={refreshing}
-        >
-          <RefreshCw size={20} className={`text-gray-600 ${refreshing ? "animate-spin" : ""}`} />
-        </button>
+         <div className="flex gap-2">
+             {/* ⚠️ DELETE DATABASE BUTTON */}
+             <button
+              onClick={clearDatabase}
+              className="p-2 bg-red-50 text-red-600 rounded-full active:scale-90 border border-red-100"
+              title="Bazani tozalash (Haftalik)"
+            >
+              <Trash2 size={20} />
+            </button>
+
+             {/* 🔔 SOUND TEST BUTTON */}
+             <button
+              onClick={() => { playSound(); }} 
+              className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90 relative"
+              title="Ovozni tekshirish"
+            >
+              <Bell size={20} />
+            </button>
+
+             {/* 🔄 REFRESH BUTTON */}
+             <button
+              onClick={fetchOrders}
+              disabled={refreshing}
+              className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90"
+              title="Yangilash"
+            >
+              <RefreshCw size={20} className={refreshing ? "animate-spin" : ""} />
+            </button>
+         </div>
       </div>
 
-      <div className="space-y-4">
-        {orders.map((order) => {
-          const phone = order.customer_phone?.trim() || "";
-          const location = order.delivery_location?.trim() || "";
-          const items = order.order_items ?? [];
+      {/* --- SUB TABS (Only visible in 'Buyurtmalar') --- */}
+      {activeTab === 'orders' && (
+          <div className="flex gap-2 overflow-x-auto pb-4 sticky top-[72px] z-10 bg-gray-100 pt-1 scrollbar-hide">
+              <button 
+                onClick={() => setOrderFilter('active')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm border ${
+                    orderFilter === 'active' 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <Clock size={16} /> Faol (Yangi)
+                <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{activeCount}</span>
+              </button>
 
-          const showPendingActions = order.status === "pending";
-          const showCookingActions = order.status === "cooking";
-
-          return (
-            <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className={`h-1 -mx-4 -mt-4 mb-4 ${accentBar(order.status)}`} />
-
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-lg text-gray-900">
-                    #{order.id} - {order.customer_name || "Mijoz"}
-                  </h3>
-
-                  <div className="mt-2 space-y-1">
-                    {phone ? (
-                      <a href={`tel:${phone}`} className="inline-flex items-center text-blue-600 font-medium text-sm hover:underline">
-                        <Phone size={14} className="mr-1" />
-                        {phone}
-                      </a>
-                    ) : (
-                      <div className="inline-flex items-center text-gray-500 text-sm">
-                        <Phone size={14} className="mr-1" />
-                        Raqam yo&apos;q
-                      </div>
-                    )}
-
-                    {location && (
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                          location.replace("GPS: ", "")
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-gray-600 text-sm hover:underline"
-                      >
-                        <MapPin size={14} className="mr-1" />
-                        {location}
-                      </a>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-gray-400 mt-2">
-                    {new Date(order.created_at).toLocaleString("uz-UZ")}
-                  </p>
-                </div>
-
-                <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${pillClass(order.status)}`}>
-                  {order.status}
+              <button 
+                onClick={() => setOrderFilter('completed')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm border ${
+                    orderFilter === 'completed' 
+                    ? 'bg-green-600 text-white border-green-600' 
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <CheckCircle2 size={16} /> Yetkazildi
+                <span className={`px-1.5 rounded text-xs ml-1 ${orderFilter === 'completed' ? 'bg-white/20' : 'bg-gray-100 text-gray-600'}`}>
+                    {completedCount}
                 </span>
-              </div>
+              </button>
 
-              <div className="bg-gray-50 p-3 rounded-lg mb-4">
-                {items.length > 0 ? (
-                  items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-gray-700 mb-1 last:mb-0">
-                      <span className="pr-2">{item.product_name}</span>
-                      <span className="font-bold">x{item.quantity}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-400">Mahsulotlar yuklanmoqda...</p>
-                )}
+              <button 
+                onClick={() => setOrderFilter('cancelled')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm border ${
+                    orderFilter === 'cancelled' 
+                    ? 'bg-red-600 text-white border-red-600' 
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <Ban size={16} /> Bekor qilindi
+                <span className={`px-1.5 rounded text-xs ml-1 ${orderFilter === 'cancelled' ? 'bg-white/20' : 'bg-gray-100 text-gray-600'}`}>
+                    {cancelledCount}
+                </span>
+              </button>
+          </div>
+      )}
 
-                <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between font-bold text-lg">
-                  <span>Jami:</span>
-                  <span>{Number(order.total_price).toLocaleString()} UZS</span>
+      {/* --- VIEW: ORDERS LIST --- */}
+      {activeTab === 'orders' && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+            {filteredOrders.length === 0 && (
+                <div className="text-center py-20 text-gray-400 flex flex-col items-center">
+                    <LayoutList size={40} className="mb-2 opacity-20" />
+                    <p>Bu bo'limda buyurtmalar yo'q</p>
                 </div>
-              </div>
+            )}
 
-              {(showPendingActions || showCookingActions) && (
-                <div className="grid grid-cols-3 gap-2">
-                  {showPendingActions && (
-                    <>
-                      <button
-                        onClick={() => updateStatus(order.id, "cooking")}
-                        className="col-span-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-semibold transition active:scale-[0.99]"
-                      >
-                        Pishirishni boshlash
-                      </button>
+            {filteredOrders.map((order) => {
+              const phone = order.customer_phone?.trim() || "";
+              const location = order.delivery_location?.trim() || "";
+              const items = order.order_items ?? [];
+              const showPending = order.status === "pending";
+              const showCooking = order.status === "cooking";
 
-                      <button
-                        onClick={() => {
-                          if (confirm("Buyurtmani bekor qilmoqchimisiz?")) {
-                            updateStatus(order.id, "cancelled");
-                          }
-                        }}
-                        className="col-span-1 bg-red-50 hover:bg-red-100 text-red-600 py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-1 active:scale-[0.99]"
-                      >
-                        <X size={16} />
-                        Bekor
-                      </button>
-                    </>
-                  )}
+              return (
+                <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 overflow-hidden relative">
+                  {/* Status Bar */}
+                  <div className={`absolute top-0 left-0 w-1 h-full ${
+                      order.status === 'pending' ? 'bg-yellow-400' : 
+                      order.status === 'cooking' ? 'bg-blue-500' :
+                      order.status === 'delivered' ? 'bg-green-500' : 'bg-red-500'
+                  }`} />
+                  
+                  <div className="pl-3">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-900">
+                            #{order.id} - {order.customer_name || "Mijoz"}
+                          </h3>
+                          <div className="mt-2 space-y-1">
+                            {phone && (
+                              <a href={`tel:${phone}`} className="inline-flex items-center text-blue-600 font-medium text-sm hover:underline">
+                                <Phone size={14} className="mr-1" /> {phone}
+                              </a>
+                            )}
+                            {location && (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=$?q=${location.replace("GPS: ", "")}`}
+                                target="_blank" rel="noopener noreferrer"
+                                className="flex items-center text-gray-600 text-sm hover:underline mt-1"
+                              >
+                                <MapPin size={14} className="mr-1 flex-shrink-0" /> <span className="truncate w-48">{location}</span>
+                              </a>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-2">
+                            {new Date(order.created_at).toLocaleString("uz-UZ")}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${
+                             order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
+                             order.status === 'cooking' ? 'bg-blue-100 text-blue-700' :
+                             order.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </div>
 
-                  {showCookingActions && (
-                    <>
-                      <button
-                        onClick={() => updateStatus(order.id, "delivered")}
-                        className="col-span-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg font-semibold transition active:scale-[0.99]"
-                      >
-                        Yetkazildi (Done)
-                      </button>
+                      <div className="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+                        {items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between text-gray-700 mb-1">
+                            <span>{item.product_name}</span>
+                            <span className="font-bold">x{item.quantity}</span>
+                            </div>
+                        ))}
+                        <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between font-bold text-base text-gray-900">
+                            <span>Jami:</span>
+                            <span>{Number(order.total_price).toLocaleString()} UZS</span>
+                        </div>
+                      </div>
 
-                      <button
-                        onClick={() => {
-                          if (confirm("Buyurtmani bekor qilmoqchimisiz?")) {
-                            updateStatus(order.id, "cancelled");
-                          }
-                        }}
-                        className="col-span-1 bg-red-50 hover:bg-red-100 text-red-600 py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-1 active:scale-[0.99]"
-                      >
-                        <X size={16} />
-                        Bekor
-                      </button>
-                    </>
-                  )}
+                      {(showPending || showCooking) && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            onClick={() => updateStatus(order.id, showPending ? "cooking" : "delivered")}
+                            className={`col-span-2 text-white py-3 rounded-xl font-bold transition active:scale-[0.98] ${showPending ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'}`}
+                          >
+                            {showPending ? "Pishirishni boshlash" : "Yetkazildi (Yopish)"}
+                          </button>
+                          <button
+                            onClick={() => { if (confirm("Bekor qilinsinmi?")) updateStatus(order.id, "cancelled"); }}
+                            className="col-span-1 bg-red-50 text-red-600 py-3 rounded-xl font-bold transition active:scale-[0.98] border border-red-100"
+                          >
+                            <X size={20} className="mx-auto" />
+                          </button>
+                        </div>
+                      )}
+                  </div>
                 </div>
-              )}
+              );
+            })}
+          </div>
+      )}
+
+      {/* --- VIEW: STATISTICS --- */}
+      {activeTab === 'stats' && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+            
+            {/* 1. MONEY CARDS */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
+                    <p className="text-gray-500 text-xs font-bold uppercase flex items-center gap-1">
+                        <Calendar size={12} /> Bugun (Kunlik)
+                    </p>
+                    <h2 className="text-xl font-bold text-gray-800 mt-1">
+                        {stats.dailyIncome.toLocaleString()} <span className="text-xs text-gray-400">UZS</span>
+                    </h2>
+                    <p className="text-xs text-green-600 mt-1">{stats.todayCount} ta buyurtma</p>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
+                    <p className="text-gray-500 text-xs font-bold uppercase flex items-center gap-1">
+                        <Calendar size={12} /> Shu oy (Oylik)
+                    </p>
+                    <h2 className="text-xl font-bold text-gray-800 mt-1">
+                        {stats.monthlyIncome.toLocaleString()} <span className="text-xs text-gray-400">UZS</span>
+                    </h2>
+                </div>
             </div>
-          );
-        })}
-      </div>
+
+            <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-5 rounded-xl shadow-md text-white">
+                <p className="text-gray-300 text-xs font-bold uppercase flex items-center gap-2">
+                    <DollarSign size={14} /> Jami Savdo (Umumiy)
+                </p>
+                <h2 className="text-3xl font-bold mt-2">
+                     {stats.totalIncome.toLocaleString()} UZS
+                </h2>
+            </div>
+
+            {/* 2. TOP PRODUCTS */}
+            <div className="bg-white rounded-xl shadow-sm p-5">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <TrendingUp size={20} className="text-orange-500"/> Eng ko'p sotilganlar
+                </h3>
+                <div className="space-y-3">
+                    {stats.topProducts.length > 0 ? (
+                        stats.topProducts.map(([name, count], index) => (
+                            <div key={name} className="flex justify-between items-center border-b border-gray-50 last:border-0 pb-2 last:pb-0">
+                                <div className="flex items-center gap-3">
+                                    <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs font-bold text-gray-500">
+                                        #{index + 1}
+                                    </span>
+                                    <span className="text-gray-700 font-medium">{name}</span>
+                                </div>
+                                <span className="font-bold text-gray-900 bg-orange-50 px-2 py-1 rounded-md text-sm">
+                                    {count} ta
+                                </span>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-gray-400 text-sm">Ma'lumot yo'q</p>
+                    )}
+                </div>
+            </div>
+          </div>
+      )}
     </main>
   );
 }
