@@ -9,8 +9,8 @@ import {
   CheckCircle2, Clock, Ban, Bell, Volume2, Trash2
 } from "lucide-react";
 
-// --- SOUND EFFECT (Base64 "Ding") ---
-const NOTIFICATION_SOUND = "data:audio/mp3;base64,//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
+// --- SOUND EFFECT (Uses file in public/ding.mp3) ---
+// Make sure you have uploaded public/ding.mp3 to GitHub/Netlify!
 
 // --- TYPES ---
 type OrderItem = {
@@ -39,14 +39,15 @@ export default function AdminPage() {
 
   useEffect(() => {
     // Load the audio file when page loads
-    const audio = new Audio(NOTIFICATION_SOUND);
+    // Ensure "ding.mp3" exists in your public folder
+    const audio = new Audio("/ding.mp3");
     audio.load();
     setAudioObj(audio);
   }, []);
 
   const handleLogin = () => {
     if (pin === "1234") {
-      // Unlock audio on first user interaction
+      // Unlock audio on first user interaction (Mobile/Chrome policy)
       if (audioObj) {
         audioObj.play().then(() => {
             audioObj.pause();
@@ -98,6 +99,7 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
     const channel = supabase
       .channel("admin_orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
+          // Play sound ONLY on new orders
           if (payload.eventType === 'INSERT') {
               playSound();
           }
@@ -252,7 +254,7 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
               <Bell size={20} />
             </button>
 
-             {/* 🔄 REFRESH BUTTON */}
+             {/* 🔄 REFRESH BUTTON (IT IS HERE!) */}
              <button
               onClick={fetchOrders}
               disabled={refreshing}
