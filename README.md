@@ -75,7 +75,4 @@ orders: Tracks transaction totals, statuses, and customer relationships.
 
 order_items: Relational table connecting products and quantities to specific orders.
 
-Developed by Ali Farhodov for the Guliston Non-Kabob restaurant.
-
-
-Would you like me to finalize your **LaTeX CV code** now to include the specific technical det
+## Developed by Ali Farhodov for the Guliston Non-Kabob restaurant.
