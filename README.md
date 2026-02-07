@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌯 Guliston Non-Kabob | Telegram Mini-App (TMA)
 
-## Getting Started
+A production-ready, full-stack food ordering platform designed specifically for the Telegram Mini-App ecosystem. This application provides a seamless, native-feeling experience for customers in Guliston to order food and for administrators to manage operations in real-time.
 
-First, run the development server:
+## 🚀 Key Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Storefront & Menu:** Dynamic product grid with category filtering (Non-Kabob, Teas, Coffee).
+- **Real-Time Order Tracking:** Customers can view "Active" and "History" orders with live status updates (Pending, Cooking, Delivered).
+- **Admin Dashboard:** A secure, PIN-protected dashboard featuring:
+  - Real-time PostgreSQL broadcast for new order alerts with audio notifications.
+  - Automated revenue analytics (Daily, Monthly, and Total sales).
+  - One-click weekly database maintenance tools.
+- **Native Integrations:**
+  - **Telegram WebApp API:** Secure user identification and native contact/phone number sharing.
+  - **Geolocation API:** Capture and standardize delivery coordinates for Google Maps integration.
+- **Multi-language Support:** Full localization in Uzbek, Russian, and English with persistent language selection.
+
+## 🛠️ Technical Stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript (Strictly typed for reliability)
+- **Database & Backend:** Supabase (PostgreSQL, Realtime, and RPC)
+- **State Management:** React Context API (Cart and Language providers)
+- **UI/UX:** Tailwind CSS v4, Lucide-React icons, and responsive mobile-first design
+
+## 📂 Project Structure
+
+```text
+├── app/
+│   ├── admin/          # Order management & Sales analytics
+│   ├── cart/           # Checkout logic & Stripe-ready integration
+│   ├── orders/         # Customer order history tracking
+│   └── profile/        # User onboarding & Contact verification
+├── components/         # Reusable UI (Product Cards, Bottom Nav)
+├── context/            # Global state (Cart, Language)
+├── lib/
+│   ├── supabaseClient/ # Supabase configuration
+│   └── translations/   # i18n Dictionary (UZ, RU, EN)
+└── public/             # Static assets (Food images, Audio alerts)
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ⚙️ Setup & Installation
+Clone the repository:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+Bash
+git clone [https://github.com/AliCapone21/nonkabob_guliston](https://github.com/AliCapone21/nonkabob_guliston)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Install dependencies:
 
-## Learn More
+```
+Bash
+npm install
+```
+Configure Environment Variables: Create a .env.local file with your Supabase credentials:
 
-To learn more about Next.js, take a look at the following resources:
+```
+Фрагмент кода
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+Run in development mode:
+```
+Bash
+npm run dev
+```
+📝 Database Schema (Supabase)
+The project utilizes three primary tables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+users: Stores Telegram IDs, full names, phone numbers, and delivery addresses.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+orders: Tracks transaction totals, statuses, and customer relationships.
 
-## Deploy on Vercel
+order_items: Relational table connecting products and quantities to specific orders.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Developed by Ali Farhodov for the Guliston Non-Kabob restaurant.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+Would you like me to finalize your **LaTeX CV code** now to include the specific technical det
