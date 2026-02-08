@@ -50,8 +50,8 @@ export default function AdminPage() {
       // Unlock audio on first user interaction (Mobile/Chrome policy)
       if (audioObj) {
         audioObj.play().then(() => {
-            audioObj.pause();
-            audioObj.currentTime = 0;
+          audioObj.pause();
+          audioObj.currentTime = 0;
         }).catch(e => console.log("Audio permission error:", e));
       }
       setAuthorized(true);
@@ -93,17 +93,32 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
   const [activeTab, setActiveTab] = useState<'orders' | 'stats'>('orders');
   const [orderFilter, setOrderFilter] = useState<'active' | 'completed' | 'cancelled'>('active');
 
+  // 🚀 GPS LOCATION HANDLER
+  const handleLocationLink = (location: string): string => {
+    const cleanLocation = location.replace("GPS: ", "").trim();
+    
+    // If it looks like GPS coordinates (lat, lng format)
+    const gpsMatch = cleanLocation.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+    if (gpsMatch) {
+      const [lat, lng] = gpsMatch;
+      return `https://www.google.com/maps?q=${lat},${lng}`;
+    }
+    
+    // Fallback to search
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanLocation)}`;
+  };
+
   useEffect(() => {
     fetchOrders();
 
     const channel = supabase
       .channel("admin_orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
-          // Play sound ONLY on new orders
-          if (payload.eventType === 'INSERT') {
-              playSound();
-          }
-          fetchOrders();
+        // Play sound ONLY on new orders
+        if (payload.eventType === 'INSERT') {
+          playSound();
+        }
+        fetchOrders();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, fetchOrders)
       .subscribe();
@@ -112,10 +127,10 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
   }, []);
 
   const playSound = () => {
-      if (audio) {
-          audio.currentTime = 0;
-          audio.play().catch(e => console.error("Sound play failed", e));
-      }
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(e => console.error("Sound play failed", e));
+    }
   };
 
   async function fetchOrders() {
@@ -155,10 +170,10 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
     const { error } = await supabase.rpc('clear_orders');
 
     if (error) {
-        alert("Xatolik: " + error.message);
+      alert("Xatolik: " + error.message);
     } else {
-        alert("Baza tozalandi! Barcha buyurtmalar o'chirildi.");
-        fetchOrders();
+      alert("Baza tozalandi! Barcha buyurtmalar o'chirildi.");
+      fetchOrders();
     }
     setRefreshing(false);
   }
@@ -170,10 +185,10 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
 
   const getFilteredOrders = () => {
     return orders.filter(o => {
-        if (orderFilter === 'active') return o.status === 'pending' || o.status === 'cooking';
-        if (orderFilter === 'completed') return o.status === 'delivered';
-        if (orderFilter === 'cancelled') return o.status === 'cancelled';
-        return true;
+      if (orderFilter === 'active') return o.status === 'pending' || o.status === 'cooking';
+      if (orderFilter === 'completed') return o.status === 'delivered';
+      if (orderFilter === 'cancelled') return o.status === 'cancelled';
+      return true;
     });
   };
 
@@ -185,14 +200,14 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
     const deliveredOrders = orders.filter(o => o.status === 'delivered');
 
     const todayOrders = deliveredOrders.filter(o => {
-        const d = new Date(o.created_at);
-        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      const d = new Date(o.created_at);
+      return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
     const dailyIncome = todayOrders.reduce((sum, o) => sum + o.total_price, 0);
 
     const monthOrders = deliveredOrders.filter(o => {
-        const d = new Date(o.created_at);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      const d = new Date(o.created_at);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
     const monthlyIncome = monthOrders.reduce((sum, o) => sum + o.total_price, 0);
 
@@ -200,16 +215,16 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
 
     const productCounts: Record<string, number> = {};
     orders.forEach(order => {
-        if (order.status !== 'cancelled') {
-            order.order_items?.forEach(item => {
-                productCounts[item.product_name] = (productCounts[item.product_name] || 0) + item.quantity;
-            });
-        }
+      if (order.status !== 'cancelled') {
+        order.order_items?.forEach(item => {
+          productCounts[item.product_name] = (productCounts[item.product_name] || 0) + item.quantity;
+        });
+      }
     });
 
     const topProducts = Object.entries(productCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5);
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
 
     return { dailyIncome, monthlyIncome, totalIncome, topProducts, todayCount: todayOrders.length };
   };
@@ -236,33 +251,33 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
          </div>
 
          <div className="flex gap-2">
-             {/* ⚠️ DELETE DATABASE BUTTON */}
-             <button
-              onClick={clearDatabase}
-              className="p-2 bg-red-50 text-red-600 rounded-full active:scale-90 border border-red-100"
-              title="Bazani tozalash (Haftalik)"
-            >
-              <Trash2 size={20} />
-            </button>
+           {/* ⚠️ DELETE DATABASE BUTTON */}
+           <button
+             onClick={clearDatabase}
+             className="p-2 bg-red-50 text-red-600 rounded-full active:scale-90 border border-red-100"
+             title="Bazani tozalash (Haftalik)"
+          >
+             <Trash2 size={20} />
+          </button>
 
-             {/* 🔔 SOUND TEST BUTTON */}
-             <button
-              onClick={() => { playSound(); }} 
-              className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90 relative"
-              title="Ovozni tekshirish"
-            >
-              <Bell size={20} />
-            </button>
+           {/* 🔔 SOUND TEST BUTTON */}
+           <button
+             onClick={() => { playSound(); }} 
+             className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90 relative"
+             title="Ovozni tekshirish"
+          >
+             <Bell size={20} />
+          </button>
 
-             {/* 🔄 REFRESH BUTTON (IT IS HERE!) */}
-             <button
-              onClick={fetchOrders}
-              disabled={refreshing}
-              className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90"
-              title="Yangilash"
-            >
-              <RefreshCw size={20} className={refreshing ? "animate-spin" : ""} />
-            </button>
+           {/* 🔄 REFRESH BUTTON */}
+           <button
+             onClick={fetchOrders}
+             disabled={refreshing}
+             className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90"
+             title="Yangilash"
+          >
+             <RefreshCw size={20} className={refreshing ? "animate-spin" : ""} />
+          </button>
          </div>
       </div>
 
@@ -351,11 +366,12 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
                             )}
                             {location && (
                               <a
-                                href={`https://www.google.com/maps/search/?api=1&query=$?q=${location.replace("GPS: ", "")}`}
+                                href={handleLocationLink(location)}
                                 target="_blank" rel="noopener noreferrer"
                                 className="flex items-center text-gray-600 text-sm hover:underline mt-1"
                               >
-                                <MapPin size={14} className="mr-1 flex-shrink-0" /> <span className="truncate w-48">{location}</span>
+                                <MapPin size={14} className="mr-1 flex-shrink-0" /> 
+                                <span className="truncate w-48">{location}</span>
                               </a>
                             )}
                           </div>
