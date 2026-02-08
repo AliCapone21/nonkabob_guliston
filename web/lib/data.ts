@@ -23,6 +23,6 @@ export const products = [
 
   // --- WATER (cat_waters) ---
   { id: 25, name: "Cola 1 L", price: 12000, image: "/food/cola.jpg", category: 'water' as const },
-  { id: 26, name: "Cola 1.5 L", price: 12000, image: "/food/cola.jpg", category: 'water' as const },
+  { id: 26, name: "Cola 1.5 L", price: 15000, image: "/food/cola.jpg", category: 'water' as const },
   { id: 27, name: "Flash", price: 12000, image: "/food/flash.jpg", category: 'water' as const },
 ];
