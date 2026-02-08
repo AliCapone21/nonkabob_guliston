@@ -93,20 +93,22 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
   const [activeTab, setActiveTab] = useState<'orders' | 'stats'>('orders');
   const [orderFilter, setOrderFilter] = useState<'active' | 'completed' | 'cancelled'>('active');
 
-  // 🚀 GPS LOCATION HANDLER
-  const handleLocationLink = (location: string): string => {
-    const cleanLocation = location.replace("GPS: ", "").trim();
-    
-    // If it looks like GPS coordinates (lat, lng format)
-    const gpsMatch = cleanLocation.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
-    if (gpsMatch) {
-      const [lat, lng] = gpsMatch;
-      return `https://www.google.com/maps?q=${lat},${lng}`;
-    }
-    
-    // Fallback to search
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanLocation)}`;
-  };
+// 🚀 IMPROVED GPS LOCATION HANDLER
+const handleLocationLink = (location: string): string => {
+  const cleanLocation = location.replace("GPS: ", "").trim();
+  
+  // Handle GPS coordinates - fix duplicate lat/lng issue
+  const gpsMatch = cleanLocation.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
+  if (gpsMatch) {
+    const lat = gpsMatch[1];
+    const lng = gpsMatch[2];
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
+  
+  // Fallback to search (no encoding needed for simple coords)
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanLocation)}`;
+};
+
 
   useEffect(() => {
     fetchOrders();
