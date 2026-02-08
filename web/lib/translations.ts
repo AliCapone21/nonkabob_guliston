@@ -14,6 +14,7 @@ type TranslationKeys = {
   cat_non_kabob: string;
   cat_tea: string;
   cat_coffee: string;
+  cat_waters: string;
 
   // Profile & Login
   login_title: string;
@@ -68,6 +69,7 @@ export const translations: Record<LangType, TranslationKeys> = {
     cat_non_kabob: "Non Kabob",
     cat_tea: "Choylar",
     cat_coffee: "Qahva",
+    cat_waters: "Suvlar",
 
     // --- PROFILE & LOGIN ---
     login_title: "Profilga kirish",
@@ -121,6 +123,7 @@ export const translations: Record<LangType, TranslationKeys> = {
     cat_non_kabob: "Нон-кабоб",
     cat_tea: "Чай",
     cat_coffee: "Кофе",
+    cat_waters: "Воды",
 
     // --- PROFILE & LOGIN ---
     login_title: "Вход в профиль",
@@ -174,6 +177,7 @@ export const translations: Record<LangType, TranslationKeys> = {
     cat_non_kabob: "Non Kabob",
     cat_tea: "Teas",
     cat_coffee: "Coffee",
+    cat_waters: "Waters",
 
     // --- PROFILE & LOGIN ---
     login_title: "Profile Login",
