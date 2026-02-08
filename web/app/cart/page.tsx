@@ -5,12 +5,14 @@ import { useCart } from "@/context/CartContext";
 import BottomNav from "@/components/BottomNav";
 import Image from "next/image";
 import { Minus, Plus, Trash2, ArrowLeft, Loader2 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useState } from "react";
 
 export default function CartPage() {
+   const { t } = useLanguage();
   const { items, addToCart, removeFromCart, totalPrice } = useCart();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);

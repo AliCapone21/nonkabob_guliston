@@ -1,13 +1,14 @@
-// components/BottomNav.tsx
 "use client";
 
 import { Home, ShoppingCart, ClipboardList, User } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext"; // ✅ Added import
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export default function BottomNav() {
   const { items } = useCart();
+  const { t } = useLanguage(); // ✅ Hook into global translations
   const pathname = usePathname();
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -30,7 +31,7 @@ export default function BottomNav() {
           className={`${baseItem} ${isActive("/") ? active : inactive}`}
         >
           <Home size={22} strokeWidth={isActive("/") ? 2.5 : 2} />
-          <span>Menu</span>
+          <span>{t.nav_menu}</span> {/* ✅ Translated */}
         </Link>
 
         {/* CART */}
@@ -46,7 +47,7 @@ export default function BottomNav() {
             </span>
           )}
 
-          <span>Savat</span>
+          <span>{t.nav_cart}</span> {/* ✅ Translated */}
         </Link>
 
         {/* ORDERS */}
@@ -55,7 +56,7 @@ export default function BottomNav() {
           className={`${baseItem} ${isActive("/orders") ? active : inactive}`}
         >
           <ClipboardList size={22} strokeWidth={isActive("/orders") ? 2.5 : 2} />
-          <span>Buyurtma</span>
+          <span>{t.nav_orders}</span> {/* ✅ Translated */}
         </Link>
 
         {/* PROFILE */}
@@ -64,7 +65,7 @@ export default function BottomNav() {
           className={`${baseItem} ${isActive("/profile") ? active : inactive}`}
         >
           <User size={22} strokeWidth={isActive("/profile") ? 2.5 : 2} />
-          <span>Profil</span>
+          <span>{t.nav_profile}</span> {/* ✅ Translated */}
         </Link>
       </div>
     </nav>

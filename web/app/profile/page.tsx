@@ -1,103 +1,15 @@
-// app/profile/page.tsx
 "use client";
 
 import BottomNav from "@/components/BottomNav";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useLanguage } from "@/context/LanguageContext"; // ✅ Use the global context
 import { 
   MapPin, Phone, Loader2, User as UserIcon, 
   ArrowLeft, Send, LogIn, CheckCircle2,
   Building2, FileText, ShieldCheck, PhoneCall,
   Instagram, Copy, Check
 } from "lucide-react";
-
-// --- 1. TRANSLATIONS DICTIONARY ---
-const TRANSLATIONS = {
-  uz: {
-    login_title: "Profilga kirish",
-    login_desc: "Buyurtma berish va kuzatish uchun tizimga kiring.",
-    login_btn: "Kirish",
-    call_btn: "Biz bilan bog'laning",
-    menu_branches: "Bizning filiallar",
-    menu_about: "Biz haqimizda",
-    menu_privacy: "Maxfiylik siyosati",
-    lang_label: "Ilova tili",
-    social_label: "Bizni ijtimoiy tarmoqlarda kuzatib boring",
-    form_title: "Ma'lumotlarni kiritish",
-    name_label: "Ismingiz",
-    phone_label: "Telefon raqam",
-    address_label: "Manzil",
-    address_placeholder: "Manzilni aniqlash...",
-    save_btn: "Saqlash",
-    share_phone: "Raqamni ulashish (Avto)",
-    location_btn: "Lokatsiya aniqlanmoqda...",
-    branch_title: "Filiallar",
-    branch_name: "Guliston Shaxar filiali",
-    about_title: "Biz haqimizda",
-    about_text: "Guliston Nonkabob - bu eng mazali va sifatli taomlar maskani.",
-    privacy_title: "Maxfiylik siyosati",
-    privacy_text: "Sizning ma'lumotlaringiz qat'iy himoyalangan. Biz sizning telefon raqamingiz va manzilingizni uchinchi shaxslarga bermaymiz. Ma'lumotlar faqat buyurtmani yetkazib berish uchun ishlatiladi.",
-    contact_title: "Aloqa",
-    contact_copy: "Nusxalash",
-    copied: "Nusxalandi!"
-  },
-  ru: {
-    login_title: "Вход в профиль",
-    login_desc: "Войдите, чтобы заказывать и отслеживать доставку.",
-    login_btn: "Войти",
-    call_btn: "Связаться с нами",
-    menu_branches: "Наши филиалы",
-    menu_about: "О нас",
-    menu_privacy: "Политика конфиденциальности",
-    lang_label: "Язык приложения",
-    social_label: "Следите за нами в соцсетях",
-    form_title: "Введите данные",
-    name_label: "Ваше имя",
-    phone_label: "Номер телефона",
-    address_label: "Адрес",
-    address_placeholder: "Определение адреса...",
-    save_btn: "Сохранить",
-    share_phone: "Поделиться номером",
-    location_btn: "Определение локации...",
-    branch_title: "Филиалы",
-    branch_name: "Филиал г. Гулистан",
-    about_title: "О нас",
-    about_text: "Guliston Nonkabob - это место самых вкусных и качественных блюд.",
-    privacy_title: "Конфиденциальность",
-    privacy_text: "Ваши данные надежно защищены. Мы не передаем ваш номер телефона и адрес третьим лицам. Данные используются только для доставки заказа.",
-    contact_title: "Контакты",
-    contact_copy: "Копировать",
-    copied: "Скопировано!"
-  },
-  en: {
-    login_title: "Profile Login",
-    login_desc: "Log in to order and track deliveries.",
-    login_btn: "Log In",
-    call_btn: "Contact Us",
-    menu_branches: "Our Branches",
-    menu_about: "About Us",
-    menu_privacy: "Privacy Policy",
-    lang_label: "App Language",
-    social_label: "Follow us on social media",
-    form_title: "Enter Details",
-    name_label: "Your Name",
-    phone_label: "Phone Number",
-    address_label: "Address",
-    address_placeholder: "Locating address...",
-    save_btn: "Save",
-    share_phone: "Share Number",
-    location_btn: "Locating...",
-    branch_title: "Branches",
-    branch_name: "Guliston City Branch",
-    about_title: "About Us",
-    about_text: "Guliston Nonkabob is the place for the most delicious and high-quality meals.",
-    privacy_title: "Privacy Policy",
-    privacy_text: "Your data is strictly protected. We do not share your phone number or address with third parties. Data is used only for order delivery.",
-    contact_title: "Contact",
-    contact_copy: "Copy",
-    copied: "Copied!"
-  }
-};
 
 const TelegramIcon = ({ size = 24, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -111,11 +23,12 @@ declare global {
   }
 }
 
-// Define the Views
 type ViewState = 'guest' | 'form' | 'branches' | 'about' | 'privacy' | 'contact';
-type LangType = 'uz' | 'ru' | 'en';
 
 export default function ProfilePage() {
+  // ✅ GLOBAL STATE: Connect to your LanguageProvider
+  const { language, setLanguage, t } = useLanguage();
+  
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(""); 
   const [phone, setPhone] = useState("+998");
@@ -124,11 +37,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [view, setView] = useState<ViewState>('guest');
   const [needsPhone, setNeedsPhone] = useState(false);
-  const [language, setLanguage] = useState<LangType>('uz');
   const [copied, setCopied] = useState(false);
-
-  // Get current translation
-  const t = TRANSLATIONS[language];
 
   useEffect(() => {
     const checkTelegram = () => {
@@ -136,7 +45,6 @@ export default function ProfilePage() {
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
-        // tg.enableClosingConfirmation(); // Optional: prevent accidental closing
 
         const telegramUser = tg.initDataUnsafe?.user;
 
@@ -145,12 +53,12 @@ export default function ProfilePage() {
           if (!name) setName(telegramUser.first_name + (telegramUser.last_name ? " " + telegramUser.last_name : ""));
           checkUserExists(telegramUser.id);
         } else {
-            if (window.location.hostname === "localhost") {
-                const fakeUser = { id: 123456, first_name: "Test User" };
-                setUser(fakeUser);
-                setName("Test User");
-                checkUserExists(fakeUser.id);
-            }
+          if (window.location.hostname === "localhost") {
+            const fakeUser = { id: 123456, first_name: "Test User" };
+            setUser(fakeUser);
+            setName("Test User");
+            checkUserExists(fakeUser.id);
+          }
         }
       }
     };
@@ -174,34 +82,34 @@ export default function ProfilePage() {
         setTimeout(requestContact, 500); 
       }
     } else {
-      setView('guest'); // New users start at guest menu
+      setView('guest');
     }
   }
 
-  const requestContact = () => {
+  const requestContact = useCallback(() => {
     if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.requestContact((success: boolean, event: any) => {
-            if (success) {
-                const contactData = event?.response?.contact || event?.contact || event?.responseUnsafe?.contact;
-                if (contactData && contactData.phone_number) {
-                    let rawPhone = contactData.phone_number;
-                    let cleanPhone = rawPhone.replace(/\D/g, ''); 
-                    if (!cleanPhone.startsWith('998')) {
-                        alert("Faqat O'zbekiston raqamlari qabul qilinadi.");
-                        return;
-                    }
-                    const finalPhone = `+${cleanPhone}`;
-                    setPhone(finalPhone);
-                    setNeedsPhone(false);
-                    saveProfileDirectly(finalPhone); 
-                } else {
-                    alert("Raqam yuborildi! Iltimos, uni quyida yozib tasdiqlang.");
-                    setNeedsPhone(false);
-                }
+      window.Telegram.WebApp.requestContact((success: boolean, event: any) => {
+        if (success) {
+          const contactData = event?.response?.contact || event?.contact || event?.responseUnsafe?.contact;
+          if (contactData && contactData.phone_number) {
+            let rawPhone = contactData.phone_number;
+            let cleanPhone = rawPhone.replace(/\D/g, ''); 
+            if (!cleanPhone.startsWith('998')) {
+              alert("Faqat O'zbekiston raqamlari qabul qilinadi.");
+              return;
             }
-        });
+            const finalPhone = `+${cleanPhone}`;
+            setPhone(finalPhone);
+            setNeedsPhone(false);
+            saveProfileDirectly(finalPhone); 
+          } else {
+            alert("Raqam yuborildi! Iltimos, uni quyida yozib tasdiqlang.");
+            setNeedsPhone(false);
+          }
+        }
+      });
     }
-  };
+  }, [name, address, location, user]);
 
   async function saveProfileDirectly(phoneValue: string) {
     if (!user) return;
@@ -236,8 +144,8 @@ export default function ProfilePage() {
     if (!user) return;
     const cleanManual = phone.replace(/\D/g, '');
     if (!cleanManual.startsWith("998") || cleanManual.length < 12) { 
-        alert("Iltimos, to'g'ri O'zbekiston raqamini kiriting (+998...)"); 
-        return; 
+      alert("Iltimos, to'g'ri O'zbekiston raqamini kiriting (+998...)"); 
+      return; 
     }
     setLoading(true);
     const updates = {
@@ -264,170 +172,164 @@ export default function ProfilePage() {
     setPhone(val);
   };
 
-  // --- SUB-PAGE: BRANCHES ---
+  // --- SUB-PAGES ---
   if (view === 'branches') {
     return (
-        <main className="min-h-screen bg-gray-50 p-4">
-            <div className="flex items-center mb-6">
-                <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
-                    <ArrowLeft size={20} />
-                </button>
-                <h1 className="text-xl font-bold">{t.branch_title}</h1>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4">
-                <div className="bg-orange-100 p-3 rounded-full text-orange-500">
-                    <Building2 size={24} />
-                </div>
-                <div>
-                    <h3 className="font-bold text-gray-800">{t.branch_name}</h3>
-                    <p className="text-xs text-gray-500">09:00 - 23:00</p>
-                </div>
-            </div>
-            <BottomNav />
-        </main>
+      <main className="min-h-screen bg-gray-50 p-4">
+        <div className="flex items-center mb-6">
+          <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-xl font-bold">{t.branch_title}</h1>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4">
+          <div className="bg-orange-100 p-3 rounded-full text-orange-500">
+            <Building2 size={24} />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-800">{t.branch_name}</h3>
+            <p className="text-xs text-gray-500">09:00 - 23:00</p>
+          </div>
+        </div>
+        <BottomNav />
+      </main>
     );
   }
 
-  // --- SUB-PAGE: ABOUT ---
   if (view === 'about') {
     return (
-        <main className="min-h-screen bg-gray-50 p-4">
-            <div className="flex items-center mb-6">
-                <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
-                    <ArrowLeft size={20} />
-                </button>
-                <h1 className="text-xl font-bold">{t.about_title}</h1>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-sm text-center">
-                 <div className="w-20 h-20 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <FileText className="text-orange-500" size={40} />
-                </div>
-                <h2 className="font-bold text-lg mb-2">NonKabob Guliston</h2>
-                <p className="text-gray-600">{t.about_text}</p>
-            </div>
-            <BottomNav />
-        </main>
+      <main className="min-h-screen bg-gray-50 p-4">
+        <div className="flex items-center mb-6">
+          <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-xl font-bold">{t.about_title}</h1>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm text-center">
+          <div className="w-20 h-20 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <FileText className="text-orange-500" size={40} />
+          </div>
+          <h2 className="font-bold text-lg mb-2">NonKabob Guliston</h2>
+          <p className="text-gray-600">{t.about_text}</p>
+        </div>
+        <BottomNav />
+      </main>
     );
   }
 
-  // --- SUB-PAGE: PRIVACY ---
   if (view === 'privacy') {
     return (
-        <main className="min-h-screen bg-gray-50 p-4">
-            <div className="flex items-center mb-6">
-                <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
-                    <ArrowLeft size={20} />
-                </button>
-                <h1 className="text-xl font-bold">{t.privacy_title}</h1>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-                <p className="text-gray-600 leading-relaxed text-sm">
-                    {t.privacy_text}
-                </p>
-            </div>
-            <BottomNav />
-        </main>
+      <main className="min-h-screen bg-gray-50 p-4">
+        <div className="flex items-center mb-6">
+          <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-xl font-bold">{t.privacy_title}</h1>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <p className="text-gray-600 leading-relaxed text-sm">
+            {t.privacy_text}
+          </p>
+        </div>
+        <BottomNav />
+      </main>
     );
   }
 
-  // --- SUB-PAGE: CONTACT ---
   if (view === 'contact') {
     return (
-        <main className="min-h-screen bg-gray-50 p-4">
-            <div className="flex items-center mb-6">
-                <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
-                    <ArrowLeft size={20} />
-                </button>
-                <h1 className="text-xl font-bold">{t.contact_title}</h1>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-sm text-center">
-                 <div className="w-20 h-20 bg-green-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <PhoneCall className="text-green-500" size={40} />
-                </div>
-                <h2 className="font-bold text-xl mb-1">+998 (93) 117 64 00</h2>
-                <p className="text-gray-400 text-sm mb-6">Guliston NonKabob Call Center</p>
-                
-                <div className="grid grid-cols-2 gap-3">
-                    <a href="tel:+998931176400" className="bg-green-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95">
-                        <PhoneCall size={18} /> Call
-                    </a>
-                    <button 
-                        onClick={() => {
-                            navigator.clipboard.writeText("+998931176400");
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
-                        }}
-                        className="bg-gray-100 text-gray-800 py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95"
-                    >
-                        {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
-                        {copied ? t.copied : t.contact_copy}
-                    </button>
-                </div>
-            </div>
-            <BottomNav />
-        </main>
+      <main className="min-h-screen bg-gray-50 p-4">
+        <div className="flex items-center mb-6">
+          <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-xl font-bold">{t.contact_title}</h1>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <PhoneCall className="text-green-500" size={40} />
+          </div>
+          <h2 className="font-bold text-xl mb-1">+998 (93) 117 64 00</h2>
+          <p className="text-gray-400 text-sm mb-6">Guliston NonKabob Call Center</p>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <a href="tel:+998931176400" className="bg-green-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95">
+              <PhoneCall size={18} /> Call
+            </a>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText("+998931176400");
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="bg-gray-100 text-gray-800 py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95"
+            >
+              {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+              {copied ? t.copied : t.contact_copy}
+            </button>
+          </div>
+        </div>
+        <BottomNav />
+      </main>
     );
   }
 
-  // --- VIEW: GUEST (MAIN MENU) ---
+  // --- VIEW: GUEST ---
   if (view === 'guest') {
     return (
       <main className="min-h-screen bg-gray-50 pb-24 p-4">
-        {/* 1. Login Card */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-4 text-center">
-            <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <LogIn className="text-orange-500" size={32} />
-            </div>
-            <h2 className="font-bold text-lg mb-2">{t.login_title}</h2>
-            <p className="text-gray-500 text-sm mb-6 px-4">{t.login_desc}</p>
-            <button 
-                onClick={() => {
-                   setView('form');
-                   setNeedsPhone(true);
-                   setTimeout(requestContact, 500);
-                }} 
-                className="w-full bg-green-500 text-white py-3 rounded-xl font-bold active:scale-95 mb-3"
-            >
-                {t.login_btn}
-            </button>
-            <button 
-                onClick={() => setView('contact')}
-                className="w-full bg-green-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95"
-            >
-                <PhoneCall size={20} />
-                {t.call_btn}
-            </button>
+          <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <LogIn className="text-orange-500" size={32} />
+          </div>
+          <h2 className="font-bold text-lg mb-2">{t.login_title}</h2>
+          <p className="text-gray-500 text-sm mb-6 px-4">{t.login_desc}</p>
+          <button 
+            onClick={() => {
+              setView('form');
+              setNeedsPhone(true);
+              setTimeout(requestContact, 500);
+            }} 
+            className="w-full bg-green-500 text-white py-3 rounded-xl font-bold active:scale-95 mb-3"
+          >
+            {t.login_btn}
+          </button>
+          <button 
+            onClick={() => setView('contact')}
+            className="w-full bg-green-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95"
+          >
+            <PhoneCall size={20} />
+            {t.call_btn}
+          </button>
         </div>
 
-        {/* 2. Menu List */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">
-            <MenuItem icon={Building2} label={t.menu_branches} onClick={() => setView('branches')} />
-            <MenuItem icon={FileText} label={t.menu_about} onClick={() => setView('about')} />
-            <MenuItem icon={ShieldCheck} label={t.menu_privacy} onClick={() => setView('privacy')} />
+          <MenuItem icon={Building2} label={t.menu_branches} onClick={() => setView('branches')} />
+          <MenuItem icon={FileText} label={t.menu_about} onClick={() => setView('about')} />
+          <MenuItem icon={ShieldCheck} label={t.menu_privacy} onClick={() => setView('privacy')} />
         </div>
 
-        {/* 3. Language Switcher */}
+        {/* ✅ REVISED LANGUAGE SWITCHER: Now triggers global state */}
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-6 flex justify-between items-center">
-            <span className="font-medium text-gray-700">{t.lang_label}</span>
-            <div className="flex bg-gray-100 rounded-lg p-1">
-                <button onClick={() => setLanguage('uz')} className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'uz' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>UZ</button>
-                <button onClick={() => setLanguage('ru')} className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'ru' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>RU</button>
-                <button onClick={() => setLanguage('en')} className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'en' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>EN</button>
-            </div>
+          <span className="font-medium text-gray-700">{t.lang_label}</span>
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button onClick={() => setLanguage('uz')} className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'uz' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>UZ</button>
+            <button onClick={() => setLanguage('ru')} className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'ru' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>RU</button>
+            <button onClick={() => setLanguage('en')} className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${language === 'en' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>EN</button>
+          </div>
         </div>
 
-        {/* 4. Social Media Footer */}
         <div className="text-center">
-            <p className="text-gray-400 text-xs mb-3">{t.social_label}</p>
-            <div className="flex justify-center gap-4">
-                <a href="https://instagram.com" target="_blank" className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-pink-600 active:scale-90 transition-transform">
-                    <Instagram size={20} />
-                </a>
-                <a href="https://t.me/nonkabob_guliston" target="_blank" className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-blue-500 active:scale-90 transition-transform">
-                    <TelegramIcon size={20} />
-                </a>
-            </div>
-            <p className="text-gray-300 text-[10px] mt-4">v1.0.0 by NonKabob</p>
+          <p className="text-gray-400 text-xs mb-3">{t.social_label}</p>
+          <div className="flex justify-center gap-4">
+            <a href="https://instagram.com" target="_blank" className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-pink-600 active:scale-90 transition-transform">
+              <Instagram size={20} />
+            </a>
+            <a href="https://t.me/nonkabob_guliston" target="_blank" className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-blue-500 active:scale-90 transition-transform">
+              <TelegramIcon size={20} />
+            </a>
+          </div>
+          <p className="text-gray-300 text-[10px] mt-4">v1.0.0 by NonKabob</p>
         </div>
 
         <BottomNav />
@@ -435,12 +337,12 @@ export default function ProfilePage() {
     );
   }
 
-  // --- VIEW: FORM (Logged In / Editing) ---
+  // --- VIEW: FORM ---
   return (
     <main className="min-h-screen bg-gray-50 pb-20 p-4">
       <div className="flex items-center mb-6">
         <button onClick={() => setView('guest')} className="mr-4 p-2 bg-white rounded-full shadow-sm text-gray-600">
-            <ArrowLeft size={20} />
+          <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">{t.form_title}</h1>
       </div>
@@ -456,29 +358,29 @@ export default function ProfilePage() {
 
       <div className="bg-white rounded-xl p-6 shadow-sm space-y-4">
         <div>
-            <label className="block text-sm text-gray-500 mb-1">{t.name_label}</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded-lg px-3 py-3 bg-gray-50 outline-none text-lg font-medium" />
+          <label className="block text-sm text-gray-500 mb-1">{t.name_label}</label>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded-lg px-3 py-3 bg-gray-50 outline-none text-lg font-medium" />
         </div>
 
         <div>
-            <label className="block text-sm text-gray-500 mb-1">{t.phone_label}</label>
-            <div className="flex items-center border rounded-lg px-3 py-3 bg-gray-50">
-                <Phone size={18} className="text-gray-400 mr-2" />
-                <input type="tel" value={phone} onChange={handlePhoneChange} className="bg-transparent w-full outline-none text-lg font-medium" />
-                {!needsPhone && <CheckCircle2 size={20} className="text-green-500 ml-2" />}
-            </div>
+          <label className="block text-sm text-gray-500 mb-1">{t.phone_label}</label>
+          <div className="flex items-center border rounded-lg px-3 py-3 bg-gray-50">
+            <Phone size={18} className="text-gray-400 mr-2" />
+            <input type="tel" value={phone} onChange={handlePhoneChange} className="bg-transparent w-full outline-none text-lg font-medium" />
+            {!needsPhone && <CheckCircle2 size={20} className="text-green-500 ml-2" />}
+          </div>
         </div>
 
         <div>
-            <label className="block text-sm text-gray-500 mb-1">{t.address_label}</label>
-            <div className="flex gap-2">
-                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className="border rounded-lg px-3 py-3 bg-gray-50 w-full outline-none text-sm" placeholder={t.address_placeholder} />
-                <button onClick={handleGetLocation} className="bg-blue-100 text-blue-600 p-3 rounded-lg"><MapPin size={24} /></button>
-            </div>
+          <label className="block text-sm text-gray-500 mb-1">{t.address_label}</label>
+          <div className="flex gap-2">
+            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className="border rounded-lg px-3 py-3 bg-gray-50 w-full outline-none text-sm" placeholder={t.address_placeholder} />
+            <button onClick={handleGetLocation} className="bg-blue-100 text-blue-600 p-3 rounded-lg"><MapPin size={24} /></button>
+          </div>
         </div>
 
         <button onClick={handleSave} disabled={loading} className="w-full bg-green-500 text-white py-4 rounded-xl font-bold shadow-lg active:scale-95">
-            {loading ? <Loader2 className="animate-spin" /> : t.save_btn}
+          {loading ? <Loader2 className="animate-spin" size={20} /> : t.save_btn}
         </button>
       </div>
       <BottomNav />
@@ -487,13 +389,13 @@ export default function ProfilePage() {
 }
 
 function MenuItem({ icon: Icon, label, onClick }: { icon: any, label: string, onClick?: () => void }) {
-    return (
-        <div onClick={onClick} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-0 active:bg-gray-50 cursor-pointer">
-            <div className="flex items-center gap-3 text-gray-600">
-                <Icon size={20} className="text-gray-500" />
-                <span className="text-sm font-medium">{label}</span>
-            </div>
-            <ArrowLeft size={16} className="text-gray-400 rotate-180" />
-        </div>
-    )
+  return (
+    <div onClick={onClick} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-0 active:bg-gray-50 cursor-pointer">
+      <div className="flex items-center gap-3 text-gray-600">
+        <Icon size={20} className="text-gray-500" />
+        <span className="text-sm font-medium">{label}</span>
+      </div>
+      <ArrowLeft size={16} className="text-gray-400 rotate-180" />
+    </div>
+  )
 }

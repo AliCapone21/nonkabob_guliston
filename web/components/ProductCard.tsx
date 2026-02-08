@@ -1,8 +1,8 @@
-// components/ProductCard.tsx
 "use client";
 
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext"; // ✅ Added
 import { Plus, Minus } from "lucide-react";
 
 interface ProductProps {
@@ -16,6 +16,7 @@ interface ProductProps {
 
 export default function ProductCard({ product }: ProductProps) {
   const { addToCart, removeFromCart, getItemCount } = useCart();
+  const { t } = useLanguage(); // ✅ Hook into global translations
   const quantity = getItemCount(product.id);
 
   return (
@@ -58,7 +59,7 @@ export default function ProductCard({ product }: ProductProps) {
             onClick={() => addToCart(product)}
             className="mt-auto w-full bg-orange-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-md shadow-orange-500/20 active:scale-95 transition-transform"
           >
-            Qo‘shish
+            {t.add_to_cart || "Qo'shish"} {/* ✅ Translated */}
           </button>
         ) : (
           <div className="mt-auto flex items-center justify-between bg-gray-100 rounded-xl p-1.5">
@@ -71,7 +72,9 @@ export default function ProductCard({ product }: ProductProps) {
             </button>
 
             <div className="flex flex-col items-center">
-              <span className="text-[11px] text-gray-400 leading-none">Soni</span>
+              <span className="text-[11px] text-gray-400 leading-none">
+                {t.item_count || "Soni"} {/* ✅ Translated */}
+              </span>
               <span className="font-extrabold text-gray-900 text-base leading-tight">
                 {quantity}
               </span>
