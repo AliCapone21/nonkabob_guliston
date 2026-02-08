@@ -1,10 +1,10 @@
-// app/admin/page.tsx - FULL CODE WITH COPY BUTTONS
+// app/admin/page.tsx - COMPLETE FIXED VERSION WITH COPY BUTTONS
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { 
-  RefreshCw, MapPin, Phone, X, Copy, 
+  RefreshCw, MapPin, Phone, X, Copy, Check,
   LayoutList, BarChart3, TrendingUp, Calendar, DollarSign,
   CheckCircle2, Clock, Ban, Bell, Trash2
 } from "lucide-react";
@@ -26,23 +26,6 @@ type Order = {
   order_items: OrderItem[] | null;
 };
 
-// --- COPY TO CLIPBOARD HOOK ---
-const useCopyToClipboard = () => {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy: ', err);
-    }
-  };
-
-  return { copy, copied };
-};
-
 // --- MAIN PAGE COMPONENT ---
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
@@ -50,6 +33,8 @@ export default function AdminPage() {
   const [audioObj, setAudioObj] = useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    // Load the audio file when page loads
+    // Ensure "ding.mp3" exists in your public folder
     const audio = new Audio("/ding.mp3");
     audio.load();
     setAudioObj(audio);
@@ -57,6 +42,7 @@ export default function AdminPage() {
 
   const handleLogin = () => {
     if (pin === "1234") {
+      // Unlock audio on first user interaction (Mobile/Chrome policy)
       if (audioObj) {
         audioObj.play().then(() => {
           audioObj.pause();
@@ -101,17 +87,35 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'orders' | 'stats'>('orders');
   const [orderFilter, setOrderFilter] = useState<'active' | 'completed' | 'cancelled'>('active');
+  const [copiedItem, setCopiedItem] = useState<string | null>(null);
 
-  // 🚀 GPS LOCATION HANDLER
+  // 🚀 GPS LOCATION HANDLER - Fixed for duplicate coords
   const handleLocationLink = (location: string): string => {
     const cleanLocation = location.replace("GPS: ", "").trim();
+    
+    // Extract first valid lat,lng pair (handles "40.49607, 68.77498,40.49607")
     const gpsMatch = cleanLocation.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
     if (gpsMatch) {
-      const [lat, lng] = gpsMatch;
+      const lat = gpsMatch[1];
+      const lng = gpsMatch[2];
       return `https://www.google.com/maps?q=${lat},${lng}`;
     }
+    
+    // Fallback to search
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanLocation)}`;
   };
+
+  // 📋 COPY TO CLIPBOARD - Single function for all items
+  const handleCopy = useCallback(async (text: string, type: 'phone' | 'location') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedItem(`${type}-${text}`);
+      setTimeout(() => setCopiedItem(null), 2000);
+    } catch (err) {
+      console.error('Copy failed:', err);
+      alert('Nusxalashda xatolik!');
+    }
+  }, []);
 
   useEffect(() => {
     fetchOrders();
@@ -179,7 +183,7 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
     setRefreshing(false);
   }
 
-  // --- COUNTERS & FILTERS ---
+  // --- COUNTERS ---
   const activeCount = orders.filter(o => o.status === 'pending' || o.status === 'cooking').length;
   const completedCount = orders.filter(o => o.status === 'delivered').length;
   const cancelledCount = orders.filter(o => o.status === 'cancelled').length;
@@ -195,7 +199,7 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
 
   const filteredOrders = getFilteredOrders();
 
-  // --- STATS ---
+  // --- STATS LOGIC ---
   const calculateStats = () => {
     const now = new Date();
     const deliveredOrders = orders.filter(o => o.status === 'delivered');
@@ -234,7 +238,7 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 pb-20">
-      {/* HEADER */}
+      {/* HEADER & MAIN TABS */}
       <div className="bg-white rounded-xl shadow-sm p-2 mb-4 flex justify-between items-center sticky top-2 z-20">
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button 
@@ -252,49 +256,82 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
         </div>
 
         <div className="flex gap-2">
-          <button onClick={clearDatabase} className="p-2 bg-red-50 text-red-600 rounded-full active:scale-90 border border-red-100" title="Bazani tozalash">
+          {/* ⚠️ DELETE DATABASE BUTTON */}
+          <button
+            onClick={clearDatabase}
+            className="p-2 bg-red-50 text-red-600 rounded-full active:scale-90 border border-red-100"
+            title="Bazani tozalash (Haftalik)"
+          >
             <Trash2 size={20} />
           </button>
-          <button onClick={playSound} className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90" title="Ovozni tekshirish">
+
+          {/* 🔔 SOUND TEST BUTTON */}
+          <button
+            onClick={playSound} 
+            className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90 relative"
+            title="Ovozni tekshirish"
+          >
             <Bell size={20} />
           </button>
-          <button onClick={fetchOrders} disabled={refreshing} className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90" title="Yangilash">
+
+          {/* 🔄 REFRESH BUTTON */}
+          <button
+            onClick={fetchOrders}
+            disabled={refreshing}
+            className="p-2 bg-gray-100 rounded-full text-gray-600 active:scale-90"
+            title="Yangilash"
+          >
             <RefreshCw size={20} className={refreshing ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
 
-      {/* SUB TABS */}
+      {/* --- SUB TABS (Only visible in 'Buyurtmalar') --- */}
       {activeTab === 'orders' && (
         <div className="flex gap-2 overflow-x-auto pb-4 sticky top-[72px] z-10 bg-gray-100 pt-1 scrollbar-hide">
           <button 
             onClick={() => setOrderFilter('active')}
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm border ${
-              orderFilter === 'active' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              orderFilter === 'active' 
+                ? 'bg-blue-600 text-white border-blue-600' 
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             }`}
           >
-            <Clock size={16} /> Faol <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{activeCount}</span>
+            <Clock size={16} /> Faol (Yangi)
+            <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{activeCount}</span>
           </button>
+
           <button 
             onClick={() => setOrderFilter('completed')}
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm border ${
-              orderFilter === 'completed' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              orderFilter === 'completed' 
+                ? 'bg-green-600 text-white border-green-600' 
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             }`}
           >
-            <CheckCircle2 size={16} /> Yetkazildi <span className={`px-1.5 rounded text-xs ml-1 ${orderFilter === 'completed' ? 'bg-white/20' : 'bg-gray-100 text-gray-600'}`}>{completedCount}</span>
+            <CheckCircle2 size={16} /> Yetkazildi
+            <span className={`px-1.5 rounded text-xs ml-1 ${orderFilter === 'completed' ? 'bg-white/20' : 'bg-gray-100 text-gray-600'}`}>
+              {completedCount}
+            </span>
           </button>
+
           <button 
             onClick={() => setOrderFilter('cancelled')}
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all shadow-sm border ${
-              orderFilter === 'cancelled' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              orderFilter === 'cancelled' 
+                ? 'bg-red-600 text-white border-red-600' 
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             }`}
           >
-            <Ban size={16} /> Bekor <span className={`px-1.5 rounded text-xs ml-1 ${orderFilter === 'cancelled' ? 'bg-white/20' : 'bg-gray-100 text-gray-600'}`}>{cancelledCount}</span>
+            <Ban size={16} /> Bekor qilindi
+            <span className={`px-1.5 rounded text-xs ml-1 ${orderFilter === 'cancelled' ? 'bg-white/20' : 'bg-gray-100 text-gray-600'}`}>
+              {cancelledCount}
+            </span>
           </button>
         </div>
       )}
 
-      {/* ORDERS LIST */}
+      {/* --- VIEW: ORDERS LIST WITH COPY BUTTONS --- */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
           {filteredOrders.length === 0 && (
@@ -310,12 +347,12 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
             const items = order.order_items ?? [];
             const showPending = order.status === "pending";
             const showCooking = order.status === "cooking";
-
-            const { copy: copyPhone, copied: copiedPhone } = useCopyToClipboard();
-            const { copy: copyLocation, copied: copiedLocation } = useCopyToClipboard();
+            const isPhoneCopied = copiedItem === `phone-${phone}`;
+            const isLocationCopied = copiedItem === `location-${location}`;
 
             return (
               <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 overflow-hidden relative">
+                {/* Status Bar */}
                 <div className={`absolute top-0 left-0 w-1 h-full ${
                   order.status === 'pending' ? 'bg-yellow-400' : 
                   order.status === 'cooking' ? 'bg-blue-500' :
@@ -329,39 +366,48 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
                         #{order.id} - {order.customer_name || "Mijoz"}
                       </h3>
                       
-                      {/* 📱 PHONE WITH COPY */}
+                      {/* 📱 PHONE WITH COPY BUTTON */}
                       {phone && (
                         <div className="mt-2 flex items-center gap-2">
                           <a href={`tel:${phone}`} className="inline-flex items-center text-blue-600 font-medium text-sm hover:underline flex-1">
                             <Phone size={14} className="mr-1" /> {phone}
                           </a>
                           <button
-                            onClick={() => copyPhone(phone)}
-                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all active:scale-95"
-                            title="Telefonni nusxalash"
+                            onClick={() => handleCopy(phone, 'phone')}
+                            className={`p-1.5 rounded-lg transition-all active:scale-95 ${
+                              isPhoneCopied 
+                                ? 'bg-green-50 text-green-600' 
+                                : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                            }`}
+                            title={isPhoneCopied ? "Nusxalandi!" : "Telefonni nusxalash"}
                           >
-                            <Copy size={16} className={copiedPhone ? 'text-green-500' : ''} />
+                            {isPhoneCopied ? <Check size={16} /> : <Copy size={16} />}
                           </button>
                         </div>
                       )}
 
-                      {/* 📍 LOCATION WITH COPY */}
+                      {/* 📍 LOCATION WITH COPY BUTTON */}
                       {location && (
                         <div className="mt-2 flex items-center gap-2">
                           <a
                             href={handleLocationLink(location)}
-                            target="_blank" rel="noopener noreferrer"
+                            target="_blank" 
+                            rel="noopener noreferrer"
                             className="flex items-center text-gray-600 text-sm hover:underline flex-1"
                           >
                             <MapPin size={14} className="mr-1 flex-shrink-0" /> 
                             <span className="truncate">{location}</span>
                           </a>
                           <button
-                            onClick={() => copyLocation(location)}
-                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all active:scale-95"
-                            title="Manzilni nusxalash"
+                            onClick={() => handleCopy(location, 'location')}
+                            className={`p-1.5 rounded-lg transition-all active:scale-95 ${
+                              isLocationCopied 
+                                ? 'bg-green-50 text-green-600' 
+                                : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                            }`}
+                            title={isLocationCopied ? "Nusxalandi!" : "Manzilni nusxalash"}
                           >
-                            <Copy size={16} className={copiedLocation ? 'text-green-500' : ''} />
+                            {isLocationCopied ? <Check size={16} /> : <Copy size={16} />}
                           </button>
                         </div>
                       )}
@@ -397,7 +443,9 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
                     <div className="grid grid-cols-3 gap-2">
                       <button
                         onClick={() => updateStatus(order.id, showPending ? "cooking" : "delivered")}
-                        className={`col-span-2 text-white py-3 rounded-xl font-bold transition active:scale-[0.98] ${showPending ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'}`}
+                        className={`col-span-2 text-white py-3 rounded-xl font-bold transition active:scale-[0.98] ${
+                          showPending ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                        }`}
                       >
                         {showPending ? "Pishirishni boshlash" : "Yetkazildi (Yopish)"}
                       </button>
@@ -416,22 +464,24 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
         </div>
       )}
 
-      {/* STATS TAB */}
+      {/* --- VIEW: STATISTICS --- */}
       {activeTab === 'stats' && (
         <div className="space-y-4">
+          {/* 1. MONEY CARDS */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
               <p className="text-gray-500 text-xs font-bold uppercase flex items-center gap-1">
-                <Calendar size={12} /> Bugun
+                <Calendar size={12} /> Bugun (Kunlik)
               </p>
               <h2 className="text-xl font-bold text-gray-800 mt-1">
                 {stats.dailyIncome.toLocaleString()} <span className="text-xs text-gray-400">UZS</span>
               </h2>
               <p className="text-xs text-green-600 mt-1">{stats.todayCount} ta buyurtma</p>
             </div>
+
             <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
               <p className="text-gray-500 text-xs font-bold uppercase flex items-center gap-1">
-                <Calendar size={12} /> Shu oy
+                <Calendar size={12} /> Shu oy (Oylik)
               </p>
               <h2 className="text-xl font-bold text-gray-800 mt-1">
                 {stats.monthlyIncome.toLocaleString()} <span className="text-xs text-gray-400">UZS</span>
@@ -441,11 +491,14 @@ function AdminDashboard({ audio }: { audio: HTMLAudioElement | null }) {
 
           <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-5 rounded-xl shadow-md text-white">
             <p className="text-gray-300 text-xs font-bold uppercase flex items-center gap-2">
-              <DollarSign size={14} /> Jami Savdo
+              <DollarSign size={14} /> Jami Savdo (Umumiy)
             </p>
-            <h2 className="text-3xl font-bold mt-2">{stats.totalIncome.toLocaleString()} UZS</h2>
+            <h2 className="text-3xl font-bold mt-2">
+              {stats.totalIncome.toLocaleString()} UZS
+            </h2>
           </div>
 
+          {/* 2. TOP PRODUCTS */}
           <div className="bg-white rounded-xl shadow-sm p-5">
             <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
               <TrendingUp size={20} className="text-orange-500"/> Eng ko'p sotilganlar
